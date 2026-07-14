@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Employee, Attachment } from '../types/employee';
-import { Printer, Edit, Trash2, X, FileText, History, Users, ShieldCheck, MapPin, Phone, Mail, Calendar, Download, ArrowLeft, FileUp, Eye, ZoomIn, Cloud, Loader2, ExternalLink, Calculator } from 'lucide-react';
+import { Printer, Edit, Trash2, X, FileText, History, Users, ShieldCheck, MapPin, Phone, Mail, Calendar, Download, ArrowLeft, FileUp, Eye, ZoomIn, Cloud, Loader2, ExternalLink, Calculator, AlertTriangle } from 'lucide-react';
 import NOSAModal from './NOSAModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { downloadFileFromDrive as downloadFileFromGDrive, deleteFileFromDrive } from '../services/driveStorage';

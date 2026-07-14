@@ -1,0 +1,861 @@
+import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { Employee } from './types/employee';
+import { dbGetAll, dbPut, dbDelete, syncOfflineData, getSyncQueue, isOnline, getWorkMode, setWorkMode, WorkMode, checkServerConnection, getServerReachable, dbClearAll, addActivityLog, getIsSyncing } from './services/db';
+import { generateEmptyEmployee } from './utils/helpers';
+import EmployeeCard from './components/EmployeeCard';
+const ProfileModal = lazy(() => import('./components/ProfileModal'));
+const EditModal = lazy(() => import('./components/EditModal'));
+const CSVModal = lazy(() => import('./components/CSVModal'));
+import ToastContainer from './components/Toast';
+const ConfirmModal = lazy(() => import('./components/ConfirmModal'));
+const SyncHistoryModal = lazy(() => import('./components/SyncHistoryModal'));
+import { useToast } from './hooks/useToast';
+import { Users, FileSpreadsheet, Plus, Search, LayoutGrid, List, Printer, Cloud, CloudOff, Loader2, Wifi, WifiOff, RefreshCw, Activity, Database, X, Server, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { getDriveAccessToken, initDriveAuth, syncDriveConfigFromServer, uploadFileToDrive } from './services/driveStorage';
+import { dataURLtoBlob } from './utils/helpers';
+
+export default function App() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showSyncHistory, setShowSyncHistory] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Storage states
+  const [storageProvider, setStorageProvider] = useState<'gdrive' | null>(
+    localStorage.getItem('gers_storage_provider') as 'gdrive' | null
+  );
+
+  const [isDriveConnected, setIsDriveConnected] = useState(() => {
+    const hasToken = !!localStorage.getItem('google_drive_access_token');
+    return !!storageProvider && hasToken;
+  });
+
+  const [driveUser, setDriveUser] = useState<any>(() => {
+    const provider = localStorage.getItem('gers_storage_provider');
+    if (provider === 'gdrive') {
+      const saved = localStorage.getItem('gers_drive_user');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+
+  const [isDriveConnecting, setIsDriveConnecting] = useState(false);
+
+  const updateStorageProvider = (provider: 'gdrive' | null) => {
+    setStorageProvider(provider);
+    if (provider) {
+      localStorage.setItem('gers_storage_provider', provider);
+    } else {
+      localStorage.removeItem('gers_storage_provider');
+    }
+  };
+
+  // Offline Sync States
+  const [workMode, setWorkModeState] = useState<WorkMode>(getWorkMode());
+  const [isOnlineState, setIsOnlineState] = useState(navigator.onLine);
+  const [syncDiagnostic, setSyncDiagnostic] = useState<any>(null);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const [syncQueueCount, setSyncQueueCount] = useState(0);
+  const [isSyncingState, setIsSyncingState] = useState(false);
+
+  // Modals state
+  const [viewingEmp, setViewingEmp] = useState<Employee | null>(null);
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [editTab, setEditTab] = useState<'service' | 'attachments'>('service');
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [csvModalTab, setCsvModalTab] = useState<'bulk' | 'single' | 'export' | 'gdrive'>('bulk');
+  const [deletingEmp, setDeletingEmp] = useState<Employee | null>(null);
+  const [showAuthExpiredBanner, setShowAuthExpiredBanner] = useState(false);
+
+  const { toasts, addToast, removeToast } = useToast();
+
+  const triggerSync = () => {
+    if (getWorkMode() === 'local') return;
+    syncOfflineData((status, pendingCount, retryData) => {
+      setSyncQueueCount(pendingCount);
+      if (status === 'syncing') {
+        setIsSyncingState(true);
+      } else if (status === 'success') {
+        setIsSyncingState(false);
+        addToast('All local changes synchronized with server!', 'success');
+        loadEmployees();
+      } else if (status === 'retrying') {
+        setIsSyncingState(true);
+        const delaySecs = (retryData?.nextRetryDelay || 2000) / 1000;
+        addToast(`Sync failed. Retrying in ${delaySecs}s (Attempt ${retryData?.attempt}/5)...`, 'info');
+      } else if (status === 'error') {
+        setIsSyncingState(false);
+        addToast(`Failed to sync some changes (${pendingCount} pending).`, 'error');
+      }
+    });
+  };
+
+
+  // Auto-migrate local attachments to Drive if connected
+  useEffect(() => {
+    let isMigrating = false;
+    const migrateLocalToDrive = async () => {
+      if (!isDriveConnected || isMigrating) return;
+      isMigrating = true;
+      let hasChanges = false;
+      const updatedEmployees = [...employees];
+      let migratedCount = 0;
+
+      for (let i = 0; i < updatedEmployees.length; i++) {
+        const emp = updatedEmployees[i];
+        if (emp.attachments && emp.attachments.length > 0) {
+          let empChanged = false;
+          const newAttachments = [...emp.attachments];
+
+          for (let j = 0; j < newAttachments.length; j++) {
+            const att = newAttachments[j];
+            if (!att.driveFileId && att.fileData) {
+              try {
+                // Determine folder name (e.g. Employee ID or Name)
+                const folderName = `${emp.surname || 'Employee'}_${emp.firstName || ''}`.trim();
+                
+                // Convert base64 to Blob
+                const blob = dataURLtoBlob(att.fileData);
+                
+                // Upload to Drive
+                const result = await uploadFileToDrive(blob, att.fileName || att.name, att.fileType, folderName);
+                
+                if (result.success) {
+                  newAttachments[j] = {
+                    ...att,
+                    driveFileId: result.id,
+                    driveWebViewLink: result.webViewLink,
+                    storageProvider: 'gdrive',
+                  };
+                  // Free up space by removing the base64 data
+                  delete newAttachments[j].fileData;
+                  empChanged = true;
+                  migratedCount++;
+                }
+              } catch (e: any) {
+                console.error("Failed to migrate attachment", att.name, e);
+                if (e.message?.includes('authenticated') || e.message?.includes('expired') || e.message?.includes('credentials')) {
+                  addToast('Google Drive authentication expired. Please reconnect.', 'error');
+                  // Stop the entire migration
+                  isMigrating = false;
+                  return;
+                }
+              }
+            }
+          }
+
+          if (empChanged) {
+            updatedEmployees[i] = { ...emp, attachments: newAttachments };
+            await dbPut(updatedEmployees[i]);
+            hasChanges = true;
+          }
+        }
+      }
+      
+      if (hasChanges) {
+        setEmployees(updatedEmployees);
+        addToast(`Migrated ${migratedCount} local file(s) to Google Drive automatically`, 'success');
+      }
+      isMigrating = false;
+    };
+
+    if (employees.length > 0 && isDriveConnected) {
+      migrateLocalToDrive();
+    }
+  }, [isDriveConnected, employees]);
+
+  useEffect(() => {
+    // Check sync status
+    fetch('/api/sync-diagnostic').then(r => r.json()).then(data => setSyncDiagnostic(data)).catch(console.error);
+    
+    // Initial data load - force server refresh if reachable to catch other device changes
+    loadEmployees(true);
+
+    // Initial sync check: if we have local changes, try to sync immediately
+    const checkInitialSync = async () => {
+      const pending = (await getSyncQueue()).length;
+      setSyncQueueCount(pending);
+      if (pending > 0 && getWorkMode() !== 'local') {
+        const reachable = await checkServerConnection();
+        if (reachable) {
+          console.log(`[App] Startup detected ${pending} pending items. Triggering sync...`);
+          triggerSync();
+        }
+      }
+    };
+    checkInitialSync();
+
+    // Check initial storage connections
+    syncDriveConfigFromServer().then(sharedConfig => {
+      if (sharedConfig) {
+        setIsDriveConnected(true);
+        setDriveUser(sharedConfig.user);
+        updateStorageProvider('gdrive');
+      } else {
+        getDriveAccessToken().then(token => {
+          if (token) {
+            setIsDriveConnected(true);
+            updateStorageProvider('gdrive');
+          }
+        });
+      }
+    });
+
+
+
+    const unsubscribeDrive = initDriveAuth(
+      (user, token) => {
+        setIsDriveConnected(true);
+        setDriveUser(user);
+        updateStorageProvider('gdrive');
+      },
+      () => {
+        // Only reset if this was the active provider
+        if (localStorage.getItem('gers_storage_provider') === 'gdrive') {
+          setIsDriveConnected(false);
+          setDriveUser(null);
+          updateStorageProvider(null);
+        }
+      }
+    );
+
+    // Setup listener for custom system storage status change
+    const handleDriveStatusChanged = (e: any) => {
+      setIsDriveConnected(e.detail.connected);
+      if (e.detail.connected) {
+        const newProvider = e.detail.provider || 'gdrive';
+        updateStorageProvider(newProvider);
+        setDriveUser(e.detail.user || { email: e.detail.email });
+      } else {
+        setDriveUser(null);
+        updateStorageProvider(null);
+      }
+    };
+    window.addEventListener('gers_drive_status_changed', handleDriveStatusChanged);
+
+    const handleAuthExpired = () => {
+      setShowAuthExpiredBanner(true);
+    };
+    window.addEventListener('gers_drive_auth_expired', handleAuthExpired);
+
+    const handleOpenDriveSettings = () => {
+      setCsvModalTab('gdrive');
+      setIsCSVModalOpen(true);
+      setShowAuthExpiredBanner(false);
+    };
+    window.addEventListener('gers_open_drive_settings', handleOpenDriveSettings);
+
+    // Setup online/offline listeners & sync triggers
+    const updateOnlineStatus = async () => {
+      const online = navigator.onLine;
+      const reachable = await checkServerConnection();
+      setIsOnlineState(isOnline());
+      
+      const mode = getWorkMode();
+      if (mode !== 'local') {
+        if (online && reachable) {
+          addToast('Network connection detected. Syncing local changes...', 'info');
+          triggerSync();
+        } else if (online && !reachable) {
+          addToast('Network connection detected, but server is currently unreachable. Changes will be saved locally.', 'info');
+        } else {
+          addToast('Network connection lost. Saving changes locally.', 'info');
+        }
+      }
+    };
+
+    const handleSyncStatusChange = () => {
+      getSyncQueue().then(q => setSyncQueueCount(q.length));
+    };
+
+    const handleDataSynced = (e: any) => {
+      if (e.detail) {
+        setEmployees(e.detail);
+      }
+    };
+
+    const handleWorkModeChanged = (e: any) => {
+      const newMode = e.detail;
+      setWorkModeState(newMode);
+      if (newMode !== 'local') {
+        checkServerConnection().then(async reachable => {
+          setIsOnlineState(navigator.onLine);
+          if (navigator.onLine && reachable) {
+            triggerSync();
+          } else {
+            loadEmployees();
+          }
+        });
+      } else {
+        setIsOnlineState(false);
+        addToast('Switched to Local Device mode. Saving offline.', 'info');
+        loadEmployees();
+      }
+    };
+
+    const handleReachabilityChange = (e: any) => {
+      setIsOnlineState(isOnline());
+    };
+
+    const handleSyncParkedItem = (e: any) => {
+      const item = e.detail;
+      const empName = item.data 
+        ? `${item.data.firstName || ''} ${item.data.surname || ''}`.trim() 
+        : item.id;
+      addToast(`Sync failed repeatedly for employee "${empName || 'Unnamed'}". This record has been parked to prevent blocking subsequent sync operations.`, 'error');
+    };
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    window.addEventListener('gers_sync_status_change', handleSyncStatusChange);
+    window.addEventListener('gers_data_synced', handleDataSynced);
+    window.addEventListener('gers_work_mode_change', handleWorkModeChanged);
+    window.addEventListener('gers_server_reachability_change', handleReachabilityChange);
+    window.addEventListener('gers_trigger_sync', triggerSync);
+    window.addEventListener('gers_sync_parked_item', handleSyncParkedItem);
+
+    // Periodic check to verify server reachability and trigger sync if back online
+    const checkServerInterval = setInterval(async () => {
+      const mode = getWorkMode();
+      if (mode !== 'local') {
+        const wasReachable = getServerReachable();
+        const nowReachable = await checkServerConnection();
+        setIsOnlineState(isOnline());
+
+        if (mode === 'auto') {
+          const pendingItems = (await getSyncQueue()).length;
+          const syncing = getIsSyncing();
+
+          if (nowReachable && !wasReachable) {
+            addToast('Government server connection restored. Synchronizing...', 'success');
+            triggerSync();
+          } else if (nowReachable && pendingItems > 0 && !syncing) {
+            // Proactively trigger sync if reachable and items are pending but no sync is active
+            console.log('[checkServerInterval] Reachable with pending items. Triggering proactive sync.');
+            triggerSync();
+          }
+        }
+      }
+    }, 5000);
+
+    // Initial check
+    getSyncQueue().then(q => setSyncQueueCount(q.length));
+    checkServerConnection().then(async reachable => {
+      setIsOnlineState(isOnline());
+      if (getWorkMode() !== 'local' && navigator.onLine && reachable && (await getSyncQueue()).length > 0) {
+        triggerSync();
+      }
+    });
+
+    return () => {
+      unsubscribeDrive();
+      clearInterval(checkServerInterval);
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+      window.removeEventListener('gers_sync_status_change', handleSyncStatusChange);
+      window.removeEventListener('gers_data_synced', handleDataSynced);
+      window.removeEventListener('gers_drive_status_changed', handleDriveStatusChanged);
+      window.removeEventListener('gers_drive_auth_expired', handleAuthExpired);
+      window.removeEventListener('gers_open_drive_settings', handleOpenDriveSettings);
+      window.removeEventListener('gers_work_mode_change', handleWorkModeChanged);
+      window.removeEventListener('gers_server_reachability_change', handleReachabilityChange);
+      window.removeEventListener('gers_trigger_sync', triggerSync);
+      window.removeEventListener('gers_sync_parked_item', handleSyncParkedItem);
+    };
+  }, []);
+
+  const handleConnectDrive = () => {
+    setCsvModalTab('gdrive');
+    setIsCSVModalOpen(true);
+  };
+
+  const loadEmployees = async (forceServerRefresh = false) => {
+    setIsLoading(true);
+    try {
+      // If we are online and not in strict local mode, try to fetch from server first if forced or if local is empty
+      const mode = getWorkMode();
+      const reachable = getServerReachable();
+      
+      if (mode !== 'local' && reachable && (forceServerRefresh || employees.length === 0)) {
+        console.log('[loadEmployees] Proactively refreshing data from government server...');
+      }
+
+      const data = await dbGetAll();
+      setEmployees(data);
+    } catch (error) {
+      console.error("Failed to load DB", error);
+      addToast('Failed to load database', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (emp: Employee, isAutosave = false) => {
+    if (!isAutosave) setIsSaving(true);
+    try {
+      await dbPut(emp);
+      setEmployees(prev => {
+        const idx = prev.findIndex(e => e.id === emp.id);
+        if (idx >= 0) {
+          const newArr = [...prev];
+          newArr[idx] = emp;
+          return newArr;
+        }
+        return [...prev, emp];
+      });
+      
+      if (!isAutosave) {
+        setEditingEmp(null);
+        addToast('Record saved successfully', 'success');
+      }
+    } catch (error) {
+      if (!isAutosave) addToast('Failed to save record', 'error');
+    } finally {
+      if (!isAutosave) setIsSaving(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingEmp) return;
+    setIsDeleting(true);
+    try {
+      await dbDelete(deletingEmp.id);
+      setEmployees(prev => prev.filter(e => e.id !== deletingEmp.id));
+      setDeletingEmp(null);
+      if (viewingEmp?.id === deletingEmp.id) setViewingEmp(null);
+      addToast('Record deleted', 'success');
+    } catch (error) {
+      addToast('Failed to delete record', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const filteredEmployees = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return employees.filter(emp => {
+      const fullName = `${emp.firstName} ${emp.surname} ${emp.nameExtension || ""}`.toLowerCase();
+      const latestDesignation = emp.serviceRecords.length > 0 
+        ? emp.serviceRecords[emp.serviceRecords.length - 1].designation.toLowerCase()
+        : '';
+      return fullName.includes(q) || emp.id.toLowerCase().includes(q) || latestDesignation.includes(q);
+    });
+  }, [employees, searchQuery]);
+
+  const permanentCount = useMemo(() => employees.filter(e => 
+    e.serviceRecords.length > 0 && e.serviceRecords[e.serviceRecords.length - 1].status.toLowerCase().includes('perm')
+  ).length, [employees]);
+
+  const handlePrintSummary = () => {
+    window.print();
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f0f2f5]">
+      {showAuthExpiredBanner && (
+        <div className="bg-red-500 text-white px-4 py-3 flex items-center justify-between shadow-md relative z-50">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-100" />
+            <div>
+              <p className="font-bold text-sm">Google Drive Session Expired</p>
+              <p className="text-xs text-red-100">For security reasons, your Drive session has expired. Please reconnect to resume uploading/downloading files.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => { setCsvModalTab('gdrive'); setIsCSVModalOpen(true); setShowAuthExpiredBanner(false); }}
+              className="px-4 py-1.5 bg-white text-red-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
+            >
+              Reconnect
+            </button>
+            <button onClick={() => setShowAuthExpiredBanner(false)} className="text-red-200 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[var(--navy)] text-white shadow-lg print:hidden">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-0 md:h-20 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <motion.div 
+              initial={{ rotate: -10, scale: 0.9 }}
+              animate={{ rotate: 0, scale: 1 }}
+              className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[var(--navy)] shadow-lg shadow-gold/20 shrink-0 overflow-hidden border-2 border-[var(--gold)]"
+            >
+              <img src="/Systemlogo.jpg" alt="System Logo" className="w-full h-full object-contain" />
+            </motion.div>
+            <div className="min-w-0">
+              <h1 className="font-playfair text-xl md:text-2xl font-bold tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+                GERS <span className="text-[var(--gold)] font-normal hidden lg:inline">| Government Employee Record System</span>
+                
+                {/* Status Indicator */}
+                {isOnlineState ? (
+                  <div className="flex items-center">
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0" title="Connected to the internet and server">
+                      <Wifi size={10} className="text-emerald-400 animate-pulse" />
+                      System Online
+                    </span>
+                    {syncDiagnostic && (
+                    <button onClick={() => setShowDiagnosticModal(true)} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ml-2 hover:bg-blue-500/20 transition-colors">
+                      <Database size={10} />
+                      DB Sync Status
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      addToast('Checking server connection...', 'info');
+                      checkServerConnection().then(async reachable => {
+                        setIsOnlineState(isOnline());
+                        if (reachable) addToast('Server reconnected!', 'success');
+                        else addToast('Server still unreachable. Check your internet or server status.', 'error');
+                      });
+                    }}
+                    className="px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 transition-all hover:bg-rose-500/20 active:scale-95" 
+                    title="No internet connection or server unreachable. Click to retry connection check."
+                  >
+                    <WifiOff size={10} className="text-rose-400" />
+                    Server Offline
+                  </button>
+                )}
+
+                {/* Sync Queue status badge */}
+                {syncQueueCount > 0 && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToast('Manually triggering synchronization...', 'info');
+                      triggerSync();
+                    }}
+                    disabled={isSyncingState}
+                    className="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 transition-all hover:bg-amber-500/20 active:scale-95 disabled:opacity-50" 
+                    title={`${syncQueueCount} changes saved locally. Click to force sync now.`}
+                  >
+                    <RefreshCw size={10} className={`text-amber-400 ${isSyncingState ? 'animate-spin' : ''}`} />
+                    {syncQueueCount} Pending Sync
+                  </button>
+                )}
+              </h1>
+              <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-widest font-medium">Administrative Management Portal</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end flex-wrap sm:flex-nowrap">
+            <button
+              onClick={() => setShowSyncHistory(true)}
+              aria-label="View Sync History"
+              className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial justify-center bg-[var(--navy-light)] hover:bg-[var(--navy-lighter)] border-white/10 text-white"
+            >
+              <Activity size={16} className="text-blue-400" />
+              <span className="hidden sm:inline">Sync Log</span>
+            </button>
+            <button
+              onClick={handleConnectDrive}
+              disabled={isDriveConnecting}
+              aria-label="Link Google Drive Storage"
+              className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial justify-center ${
+                isDriveConnected
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'bg-[var(--navy-light)] hover:bg-[var(--navy-lighter)] border-white/10 text-white'
+              }`}
+            >
+              {isDriveConnecting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : isDriveConnected ? (
+                <Cloud size={16} className="text-emerald-400" />
+              ) : (
+                <CloudOff size={16} />
+              )}
+              <span className="inline">
+                {isDriveConnecting ? 'Connecting...' : isDriveConnected ? 'Google Drive' : 'Link Storage'}
+              </span>
+            </button>
+            <button 
+              onClick={() => { setCsvModalTab('bulk'); setIsCSVModalOpen(true); }}
+              aria-label="Open import and export center"
+              className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-[var(--navy-light)] hover:bg-[var(--navy-lighter)] rounded-lg border border-white/10 text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial"
+            >
+              <FileSpreadsheet size={16} />
+              <span className="inline">Data Center</span>
+            </button>
+            <button 
+              onClick={() => { setEditingEmp(generateEmptyEmployee()); setEditTab('service'); }}
+              aria-label="Add new employee"
+              className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-[var(--gold)] hover:bg-[var(--gold-light)] text-[var(--navy)] rounded-lg text-xs sm:text-sm font-bold shadow-lg shadow-gold/20 transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial"
+            >
+              <Plus size={16} />
+              <span className="inline">New Record</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Stats Strip */}
+      <div className="bg-white border-b border-slate-200 print:hidden">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="flex gap-6 sm:gap-8 text-sm justify-between md:justify-start">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Total Records</span>
+              <span className="font-mono text-base sm:text-lg font-bold text-[var(--navy)]">{employees.length}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Permanent</span>
+              <span className="font-mono text-base sm:text-lg font-bold text-[var(--green)]">{permanentCount}</span>
+            </div>
+            {searchQuery && (
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Filtered</span>
+                <span className="font-mono text-base sm:text-lg font-bold text-[var(--gold-dark)]">{filteredEmployees.length}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button 
+                onClick={handlePrintSummary}
+                aria-label="Print summary of all records"
+                className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all flex-1 sm:flex-initial h-10"
+              >
+                <Printer size={16} />
+                <span>Print Summary</span>
+              </button>
+              
+              <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0 h-10 items-center">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  aria-label="Switch to grid view"
+                  aria-pressed={viewMode === 'grid'}
+                  className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-[var(--navy)]' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  aria-label="Switch to list view"
+                  aria-pressed={viewMode === 'list'}
+                  aria-selected={viewMode === 'list'}
+                  className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[var(--navy)]' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative w-full sm:w-64 md:w-80 flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Search records..." 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  aria-label="Search employees"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm h-10"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  addToast('Refreshing records from server...', 'info');
+                  loadEmployees(true);
+                }}
+                disabled={isLoading}
+                title="Refresh records from server"
+                className="p-2.5 rounded-full bg-slate-100 text-slate-500 hover:bg-[var(--gold-light)] hover:text-[var(--gold-dark)] transition-all shrink-0 active:scale-90"
+              >
+                <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full print:hidden">
+        {isLoading ? (
+          <div className="flex flex-col justify-center items-center h-96 gap-4">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-[var(--gold)] rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm font-medium text-slate-500 animate-pulse">Accessing Secure Database...</p>
+          </div>
+        ) : filteredEmployees.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-32 bg-white rounded-2xl shadow-sm border border-slate-200"
+          >
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Users className="text-slate-300" size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 font-playfair">No Records Found</h3>
+            <p className="text-slate-500 mt-2 max-w-xs mx-auto">We couldn't find any employees matching your current search criteria.</p>
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="mt-6 text-[var(--gold-dark)] font-bold hover:underline"
+            >
+              Clear all filters
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div 
+            layout
+            className={viewMode === 'grid' 
+              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+              : "flex flex-col gap-4"
+            }
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredEmployees.map(emp => (
+                <motion.div
+                  key={emp.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <EmployeeCard 
+                    employee={emp} 
+                    viewMode={viewMode}
+                    onView={setViewingEmp}
+                    onEdit={(emp) => { setEditingEmp(emp); setEditTab('service'); }}
+                    onDelete={setDeletingEmp}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </main>
+
+      {/* Modals */}
+      <AnimatePresence>
+        <Suspense fallback={<div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center"><Loader2 className="animate-spin text-white" size={32} /></div>}>
+        {viewingEmp && (
+          <ProfileModal 
+            employee={viewingEmp} 
+            onClose={() => setViewingEmp(null)} 
+            onEdit={(emp, tab) => { setViewingEmp(null); setEditingEmp(emp); setEditTab(tab || 'service'); }}
+            onDelete={setDeletingEmp}
+            onSave={(emp) => handleSave(emp, true)}
+          />
+        )}
+        
+        {editingEmp && (
+          <EditModal 
+            employee={editingEmp} 
+            onClose={() => setEditingEmp(null)} 
+            onSave={handleSave} 
+            initialTab={editTab}
+            isSaving={isSaving}
+          />
+        )}
+
+        {isCSVModalOpen && (
+          <CSVModal 
+            employees={employees}
+            initialTab={csvModalTab}
+            onClose={() => setIsCSVModalOpen(false)} 
+            onImport={async (imported) => {
+              // Log the bulk import action
+              addActivityLog({
+                actionType: 'IMPORT',
+                message: `Bulk imported ${imported.length} employee records`,
+                details: {
+                  employeeName: 'System Bulk Action',
+                  changes: [`Imported ${imported.length} dossiers and initiated database updates.`]
+                }
+              });
+              // Optimize: Parallel database writes
+              await Promise.all(imported.map(emp => dbPut(emp)));
+              await loadEmployees();
+              setIsCSVModalOpen(false);
+              addToast(`Imported ${imported.length} records`, 'success');
+            }}
+            onClear={async () => {
+              await dbClearAll();
+              await loadEmployees();
+              setIsCSVModalOpen(false);
+              addToast('All data in the system has been cleared.', 'success');
+            }}
+          />
+        )}
+
+        {deletingEmp && (
+          <ConfirmModal 
+            title="Delete Employee Record"
+            message={`Are you sure you want to delete the record for ${deletingEmp.firstName} ${deletingEmp.surname}? This action cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeletingEmp(null)}
+            isLoading={isDeleting}
+          />
+        )}
+        
+        {showSyncHistory && (
+          <SyncHistoryModal onClose={() => setShowSyncHistory(false)} />
+        )}
+      </Suspense>
+      </AnimatePresence>
+
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Print Summary Table (Only visible when printing) */}
+      <div className={`hidden print:block p-8 bg-white text-black w-full ${viewingEmp ? 'no-print' : ''}`}>
+        <div className="text-center mb-8 border-b-2 border-black pb-4">
+          <h1 className="text-3xl font-bold uppercase tracking-tighter">Government Employee Record System</h1>
+          <p className="text-sm font-bold uppercase tracking-widest mt-1">Consolidated Personnel Summary Report</p>
+          <p className="text-[10px] mt-2 italic">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+        </div>
+        
+        <table className="w-full text-[10px] border-collapse border border-black">
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="border border-black p-2 text-left">Employee ID</th>
+              <th className="border border-black p-2 text-left">Full Name</th>
+              <th className="border border-black p-2 text-left">Sex</th>
+              <th className="border border-black p-2 text-left">Civil Status</th>
+              <th className="border border-black p-2 text-left">Latest Designation</th>
+              <th className="border border-black p-2 text-left">Status</th>
+              <th className="border border-black p-2 text-left">Station</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEmployees.map(emp => {
+              const latest = emp.serviceRecords.length > 0 ? emp.serviceRecords[emp.serviceRecords.length - 1] : null;
+              return (
+                <tr key={emp.id}>
+                  <td className="border border-black p-2 font-mono">{emp.id}</td>
+                  <td className="border border-black p-2 font-bold">{emp.surname}, {emp.firstName} {emp.middleName ? emp.middleName.charAt(0) + "." : ""} {emp.nameExtension || ""}</td>
+                  <td className="border border-black p-2">{emp.sex}</td>
+                  <td className="border border-black p-2">{emp.civilStatus}</td>
+                  <td className="border border-black p-2">{latest?.designation || 'N/A'}</td>
+                  <td className="border border-black p-2">{latest?.status || 'N/A'}</td>
+                  <td className="border border-black p-2">{latest?.station || 'N/A'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        
+        <div className="mt-12 flex justify-between items-end">
+          <div className="text-[8px] italic text-slate-500">
+            Total Records: {filteredEmployees.length}<br />
+            Permanent: {permanentCount}
+          </div>
+          <div className="text-center border-t border-black pt-2 px-8">
+            <p className="text-[10px] font-bold uppercase">Authorized Personnel Signature</p>
+            <p className="text-[8px] mt-1">Administrative Division</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

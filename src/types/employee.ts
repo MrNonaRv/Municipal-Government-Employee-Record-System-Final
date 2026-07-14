@@ -1,0 +1,118 @@
+export interface NOSARecord {
+  id: string;
+  dateOfNotice: string;
+  newSg: string;
+  newStep: string;
+  newSalary: string;
+  newDate: string;
+  oldSg: string;
+  oldStep: string;
+  oldSalary: string;
+  oldDate: string;
+  designation: string;
+  itemNo: string;
+  fy: string;
+  lbcNo: string;
+  lbcDate: string;
+  eoNo: string;
+  eoDate: string;
+  mayorName: string;
+  createdAt: string;
+}
+
+export interface Child {
+  name: string;
+  dob: string;
+}
+
+export interface Education {
+  id: string;
+  level: string;
+  school: string;
+  course: string;
+  yearGraduated: string;
+  from: string;
+  to: string;
+  honors: string;
+}
+
+export interface ServiceRecord {
+  id: string;
+  from: string;
+  to: string;
+  designation: string;
+  status: string;
+  salary: string;
+  station: string;
+  branch: string;
+  lwop: string;
+  sepDate: string;
+  sepCause: string;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  fileName: string;
+  fileType: string;
+  fileData?: string; // Base64 Data URI (optional or fallback when not on drive)
+  uploadedAt: string;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+  driveWebContentLink?: string;
+  storageProvider?: 'gdrive';
+}
+
+export interface Employee {
+  id: string;
+  photo: string | null;
+  
+  // Personal
+  surname: string;
+  firstName: string;
+  middleName: string;
+  nameExtension: string;
+  sex: string;
+  civilStatus: string;
+  citizenship: string;
+  height: string;
+  weight: string;
+  bloodType: string;
+  residentialAddress: string;
+  permanentAddress: string;
+  zipCode: string;
+  telephone: string;
+  cellphone: string;
+  email: string;
+  
+  // Gov IDs
+  gsisNo: string;
+  pagibigNo: string;
+  philhealthNo: string;
+  sssNo: string;
+  tin: string;
+  agencyEmployeeNo: string;
+  
+  // Family
+  spouseSurname: string;
+  spouseFirstName: string;
+  spouseMiddleName: string;
+  spouseOccupation: string;
+  spouseEmployer: string;
+  spouseTelephone: string;
+  children: Child[];
+  fatherSurname: string;
+  fatherFirstName: string;
+  fatherMiddleName: string;
+  motherSurname: string;
+  motherFirstName: string;
+  motherMiddleName: string;
+  
+  // Education & Service
+  education: Education[];
+  serviceRecords: ServiceRecord[];
+  attachments?: Attachment[];
+  nosaRecords?: NOSARecord[];
+  pdsScan?: string | null;
+}
+

@@ -1,0 +1,146 @@
+const fs = require('fs');
+let code = fs.readFileSync('src/components/ProfileModal.tsx', 'utf8');
+
+const targetPrintView = code.substring(code.indexOf('{/* PRINT-ONLY DOSSIER VIEW */}'), code.indexOf('{/* Scanned PDS image if exists */}'));
+
+const replacementPrintView = \`{/* PRINT-ONLY DOSSIER VIEW */}
+      <div className={\`hidden \${!showNosa ? 'print:block' : ''} w-full bg-white text-black p-8 font-serif\`}>
+        <div className="w-full">
+          {/* Title block */}
+          <div className="text-center mb-8">
+            <p className="text-[11px] leading-tight">Republic of the Philippines</p>
+            <p className="text-[11px] leading-tight">Province of Capiz</p>
+            <p className="text-[11px] leading-tight font-bold uppercase">MUNICIPALITY OF MAMBUSAO</p>
+            <h2 className="text-xl font-bold tracking-wide mt-6 mb-8 uppercase">SERVICE RECORD</h2>
+          </div>
+
+          <div className="flex justify-between items-start mb-6 text-[11px] leading-relaxed">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-end mb-2">
+                <div className="w-16 font-bold">NAME</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase">{employee.surname || ' '}</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase ml-2">{employee.firstName || ' '}</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase ml-2">{employee.middleName ? employee.middleName + (employee.nameExtension ? ' ' + employee.nameExtension : '') : (employee.nameExtension || ' ')}</div>
+              </div>
+              <div className="flex items-start text-[9px] mb-4">
+                <div className="w-16"></div>
+                <div className="flex-1 text-center text-gray-700">(Surname)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Given Name)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Middle Initial)</div>
+              </div>
+              
+              <div className="flex items-end mb-2">
+                <div className="w-16 font-bold">BIRTH</div>
+                <div className="flex-1 text-center border-b border-black font-bold">{/* Could add birthdate here if available */ ' '}</div>
+                <div className="flex-1 text-center border-b border-black font-bold ml-2">{/* Could add birth place here if available */ ' '}</div>
+                <div className="flex-1 ml-2"></div>
+              </div>
+              <div className="flex items-start text-[9px]">
+                <div className="w-16"></div>
+                <div className="flex-1 text-center text-gray-700">(Date)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Place)</div>
+                <div className="flex-1 ml-2"></div>
+              </div>
+            </div>
+            
+            <div className="w-48 text-[9px] text-justify leading-tight">
+              (If married woman, give also full maiden name)
+              <br/><br/>
+              (Date herein should be checked from birth or baptismal certificate or some other reliable documents)
+            </div>
+          </div>
+
+          <p className="text-[11px] text-justify leading-relaxed mb-4 indent-8">
+            This is to certify that the employee named herein above actually rendered services in this Office
+            as shown by the service record below, each line of which is supported by appointment and other papers
+            actually issued by this Office and approved by the authorities concerned.
+          </p>
+
+          {/* Records Table */}
+          <div className="border border-black overflow-hidden mb-8">
+            <table className="w-full border-collapse border border-black text-[10px] leading-tight text-center bg-white">
+              <thead>
+                <tr>
+                  <th colSpan={2} className="border border-black p-1 font-bold">SERVICE<br/><span className="text-[9px] font-normal">(Inclusive Dates)</span></th>
+                  <th colSpan={3} className="border border-black p-1 font-bold">RECORD OF APPOINTMENT</th>
+                  <th colSpan={2} className="border border-black p-1 font-bold">OFFICE ENTITY DIVISION</th>
+                  <th rowSpan={2} className="border border-black p-1 font-bold w-12 text-[9px]">L/V ABS<br/>W/O PAY</th>
+                  <th colSpan={2} className="border border-black p-1 font-bold">SEPARATION<br/><span className="text-[9px] font-normal">(4)</span></th>
+                </tr>
+                <tr>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">From</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">To</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Designation</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-12">Status<br/>(1)</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">Salary<br/>(2)</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Station/Place<br/>of Assignment</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">BRANCH<br/>(3)</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">Date</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Cause</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(employee.serviceRecords || []).map((rec, i) => (
+                  <tr key={i}>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.from}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.to}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.designation}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.status}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.salary}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.station}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.branch}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.lwop || 'None'}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.sepDate || ''}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.sepCause || ''}</td>
+                  </tr>
+                ))}
+                
+                {/* Empty rows to fill space if needed */}
+                {Array.from({ length: Math.max(0, 15 - (employee.serviceRecords || []).length) }).map((_, i) => (
+                  <tr key={\`empty-\${i}\`}>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                  </tr>
+                ))}
+                
+                {/* Bottom border of the table */}
+                <tr>
+                  <td colSpan={10} className="border-t border-black p-0 h-0"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="text-center text-[10px] italic mb-12">
+            Issued in compliance with Executive Order No. 54 dated August 10, 1954, and in accordance with<br/>
+            Circular No. 58 dated August 10, 1954 of the System.
+          </div>
+
+          <div className="flex justify-end items-end pr-12">
+            <div className="text-center relative">
+              <div className="text-[11px] font-bold text-left mb-6 absolute -left-32 top-0">CERTIFIED CORRECT:</div>
+              <div className="w-48 border-b border-black mb-1 mx-auto relative z-10">
+                {/* Signature would go here */}
+              </div>
+              <div className="font-bold text-[11px]">BIO C. GARCIA</div>
+              <div className="text-[10px]">Administrative Officer V</div>
+            </div>
+          </div>
+          
+          <div className="mt-8 text-[11px]">
+            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+
+        `;
+
+code = code.replace(targetPrintView, replacementPrintView);
+fs.writeFileSync('src/components/ProfileModal.tsx', code);

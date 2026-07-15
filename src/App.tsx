@@ -18,7 +18,11 @@ import { dataURLtoBlob } from './utils/helpers';
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
   const [showSyncHistory, setShowSyncHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -437,16 +441,38 @@ export default function App() {
     }
   };
 
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    employees.forEach(emp => {
+      const latestSR = emp.serviceRecords[emp.serviceRecords.length - 1];
+      if (latestSR && latestSR.status) statuses.add(latestSR.status);
+    });
+    return Array.from(statuses).sort();
+  }, [employees]);
+
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set<string>();
+    employees.forEach(emp => {
+      const latestSR = emp.serviceRecords[emp.serviceRecords.length - 1];
+      if (latestSR && latestSR.station) depts.add(latestSR.station);
+    });
+    return Array.from(depts).sort();
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     const q = searchQuery.toLowerCase();
     return employees.filter(emp => {
       const fullName = `${emp.firstName} ${emp.surname} ${emp.nameExtension || ""}`.toLowerCase();
-      const latestDesignation = emp.serviceRecords.length > 0 
-        ? emp.serviceRecords[emp.serviceRecords.length - 1].designation.toLowerCase()
-        : '';
-      return fullName.includes(q) || emp.id.toLowerCase().includes(q) || latestDesignation.includes(q);
+      const latestSR = emp.serviceRecords.length > 0 ? emp.serviceRecords[emp.serviceRecords.length - 1] : null;
+      const latestDesignation = latestSR ? latestSR.designation.toLowerCase() : '';
+      
+      const matchesSearch = fullName.includes(q) || emp.id.toLowerCase().includes(q) || latestDesignation.includes(q);
+      const matchesStatus = statusFilter ? (latestSR?.status === statusFilter) : true;
+      const matchesDept = departmentFilter ? (latestSR?.station === departmentFilter) : true;
+      
+      return matchesSearch && matchesStatus && matchesDept;
     });
-  }, [employees, searchQuery]);
+  }, [employees, searchQuery, statusFilter, departmentFilter]);
 
   const permanentCount = useMemo(() => employees.filter(e => 
     e.serviceRecords.length > 0 && e.serviceRecords[e.serviceRecords.length - 1].status.toLowerCase().includes('perm')
@@ -642,8 +668,28 @@ export default function App() {
               </div>
             </div>
 
-            <div className="relative w-full sm:w-64 md:w-80 flex items-center gap-2">
-              <div className="relative flex-1">
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 max-w-[150px] truncate"
+              >
+                <option value="">All Stations</option>
+                {uniqueDepartments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 max-w-[150px] truncate"
+              >
+                <option value="">All Statuses</option>
+                {uniqueStatuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+              <div className="relative flex-1 w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
                   type="text" 
@@ -746,6 +792,7 @@ export default function App() {
         {editingEmp && (
           <EditModal 
             employee={editingEmp} 
+            allEmployees={employees}
             onClose={() => setEditingEmp(null)} 
             onSave={handleSave} 
             initialTab={editTab}

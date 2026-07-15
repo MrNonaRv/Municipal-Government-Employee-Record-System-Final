@@ -29,6 +29,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
               alt={`Photo of ${employee.firstName} ${employee.surname}`} 
               className="w-full h-full object-cover" 
               referrerPolicy="no-referrer" 
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
@@ -96,6 +97,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
             alt={`Photo of ${employee.firstName} ${employee.surname}`} 
             className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-700" 
             referrerPolicy="no-referrer" 
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950">

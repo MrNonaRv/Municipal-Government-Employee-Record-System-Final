@@ -592,118 +592,144 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
       </motion.div>
 
       {/* PRINT-ONLY DOSSIER VIEW */}
-      <div className={`hidden ${!showNosa ? 'print:block' : ''} w-full bg-white text-black p-8`}>
+      <div className={`hidden ${!showNosa ? 'print:block' : ''} w-full bg-white text-black p-8 font-serif`}>
         <div className="w-full">
           {/* Title block */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="w-[1.5in] h-[1.5in] invisible"></div> {/* Spacer for centering */}
-            <div className="text-center flex-1">
-              <p className="text-[10px] uppercase font-bold tracking-[0.25em] text-slate-500 leading-tight">Republic of the Philippines</p>
-              <p className="text-xs uppercase font-extrabold tracking-[0.1em] text-slate-700 leading-normal">MUNICIPALITY OF MAMBUSAO • PROVINCE OF CAPIZ</p>
-              <h2 className="text-2xl font-black text-slate-900 tracking-wide uppercase mt-4 mb-1">file record sheet</h2>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 italic">Official Permanent Service Record</p>
-              <div className="w-16 h-1 bg-slate-900 mx-auto mt-4"></div>
+          <div className="text-center mb-8">
+            <p className="text-[11px] leading-tight">Republic of the Philippines</p>
+            <p className="text-[11px] leading-tight">Province of Capiz</p>
+            <p className="text-[11px] leading-tight font-bold uppercase">MUNICIPALITY OF MAMBUSAO</p>
+            <h2 className="text-xl font-bold tracking-wide mt-6 mb-8 uppercase">SERVICE RECORD</h2>
+          </div>
+
+          <div className="flex justify-between items-start mb-6 text-[11px] leading-relaxed">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-end mb-2">
+                <div className="w-16 font-bold">NAME</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase">{employee.surname || ' '}</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase ml-2">{employee.firstName || ' '}</div>
+                <div className="flex-1 text-center border-b border-black font-bold uppercase ml-2">{employee.middleName ? employee.middleName + (employee.nameExtension ? ' ' + employee.nameExtension : '') : (employee.nameExtension || ' ')}</div>
+              </div>
+              <div className="flex items-start text-[9px] mb-4">
+                <div className="w-16"></div>
+                <div className="flex-1 text-center text-gray-700">(Surname)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Given Name)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Middle Initial)</div>
+              </div>
+              
+              <div className="flex items-end mb-2">
+                <div className="w-16 font-bold">BIRTH</div>
+                <div className="flex-1 text-center border-b border-black font-bold"> </div>
+                <div className="flex-1 text-center border-b border-black font-bold ml-2"> </div>
+                <div className="flex-1 ml-2"></div>
+              </div>
+              <div className="flex items-start text-[9px]">
+                <div className="w-16"></div>
+                <div className="flex-1 text-center text-gray-700">(Date)</div>
+                <div className="flex-1 text-center text-gray-700 ml-2">(Place)</div>
+                <div className="flex-1 ml-2"></div>
+              </div>
             </div>
-            <div className="w-[1.5in] h-[1.5in] border-2 border-slate-900 shrink-0 bg-white p-1">
-              {employee.photo ? (
-                <img src={employee.photo} alt="Employee Photo" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-center">
-                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Attach<br/>2x2<br/>Photo</span>
-                </div>
-              )}
+            
+            <div className="w-48 text-[9px] text-justify leading-tight ml-4">
+              (If married woman, give also full maiden name)
+              <br/><br/>
+              (Date herein should be checked from birth or baptismal certificate or some other reliable documents)
             </div>
           </div>
 
-          {/* Header metadata summary strip */}
-          <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-300 rounded-2xl mb-6 text-left">
-            <div>
-              <span className="text-[8px] uppercase font-black text-slate-500 tracking-widest block">Employee Surname</span>
-              <strong className="text-sm font-extrabold text-slate-900 uppercase block">{employee.surname || '—'}</strong>
-            </div>
-            <div>
-              <span className="text-[8px] uppercase font-black text-slate-500 tracking-widest block">Given & Middle Name</span>
-              <strong className="text-sm font-extrabold text-slate-900 uppercase block">{employee.firstName} {employee.middleName || ''} {employee.nameExtension || ''}</strong>
-            </div>
-            <div>
-              <span className="text-[8px] uppercase font-black text-slate-500 tracking-widest block">Dossier Account ID</span>
-              <strong className="text-sm font-mono text-slate-600 block">EMP-{employee.id.toString().padStart(6, '0')}</strong>
-            </div>
-          </div>
-
-          <p className="text-[10px] text-justify leading-relaxed mb-4 text-slate-600 italic">
-            This is to certify that the employee named herein has rendered services in this Government Unit as itemized below in chronological sequence, supported by authorized appointments:
+          <p className="text-[11px] text-justify leading-relaxed mb-4 indent-8">
+            This is to certify that the employee named herein above actually rendered services in this Office
+            as shown by the service record below, each line of which is supported by appointment and other papers
+            actually issued by this Office and approved by the authorities concerned.
           </p>
 
           {/* Records Table */}
-          <div className="border border-slate-300 rounded-xl overflow-hidden">
-            <table className="w-full border-collapse border border-slate-300 text-[10px] leading-normal text-center bg-white">
+          <div className="border border-black overflow-hidden mb-8">
+            <table className="w-full border-collapse border border-black text-[10px] leading-tight text-center bg-white">
               <thead>
-                <tr className="bg-slate-50 text-slate-850 font-extrabold uppercase border-b border-slate-300">
-                  <th className="border border-slate-300 px-2 py-2 text-[9px] w-12 text-slate-500 font-bold">S.N.</th>
-                  <th className="border border-slate-300 px-2 py-2 w-24">inclusive from</th>
-                  <th className="border border-slate-300 px-2 py-2 w-24">inclusive to</th>
-                  <th className="border border-slate-300 px-2 py-2 text-left">designation / title</th>
-                  <th className="border border-slate-300 px-2 py-2 w-24">appointment status</th>
-                  <th className="border border-slate-300 px-2 py-2 text-right">annual salary rate</th>
-                  <th className="border border-slate-300 px-2 py-2 text-left">station / place of assignment</th>
-                  <th className="border border-slate-300 px-2 py-2 w-20">office branch</th>
-                  <th className="border border-slate-300 px-2 py-2 w-16">l/v w/o pay</th>
-                  <th className="border border-slate-300 px-2 py-2 w-20">separation date</th>
-                  <th className="border border-slate-300 px-2 py-2 text-left">cause of separation</th>
+                <tr>
+                  <th colSpan={2} className="border border-black p-1 font-bold">SERVICE<br/><span className="text-[9px] font-normal">(Inclusive Dates)</span></th>
+                  <th colSpan={3} className="border border-black p-1 font-bold">RECORD OF APPOINTMENT</th>
+                  <th colSpan={2} className="border border-black p-1 font-bold">OFFICE ENTITY DIVISION</th>
+                  <th rowSpan={2} className="border border-black p-1 font-bold w-12 text-[9px]">L/V ABS<br/>W/O PAY</th>
+                  <th colSpan={2} className="border border-black p-1 font-bold">SEPARATION<br/><span className="text-[9px] font-normal">(4)</span></th>
+                </tr>
+                <tr>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">From</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">To</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Designation</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-12">Status<br/>(1)</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">Salary<br/>(2)</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Station/Place<br/>of Assignment</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">BRANCH<br/>(3)</th>
+                  <th className="border border-black p-1 font-normal text-[9px] w-16">Date</th>
+                  <th className="border border-black p-1 font-normal text-[9px]">Cause</th>
                 </tr>
               </thead>
               <tbody>
                 {(employee.serviceRecords || []).map((rec, i) => (
-                  <tr key={i} className="border-b border-slate-200">
-                    <td className="border border-slate-300 px-2 py-2 font-bold font-mono text-center text-[9px] text-slate-400 bg-slate-50/50">
-                      {i + 1}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                      {rec.from}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                      {rec.to}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-left uppercase font-bold text-slate-800 break-words font-sans max-w-[150px]">
-                      {rec.designation}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center uppercase font-semibold text-slate-605 text-[8.5px]">
-                      {rec.status}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
-                      {rec.salary}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-left uppercase font-medium text-slate-600 break-words font-sans max-w-[180px]">
-                      {rec.station}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center uppercase font-bold text-slate-500 font-sans text-[8.5px]">
-                      {rec.branch}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center uppercase font-medium text-slate-550 whitespace-nowrap">
-                      {rec.lwop || 'None'}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] text-slate-500 whitespace-nowrap">
-                      {rec.sepDate || '—'}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-2 text-left uppercase font-medium text-slate-550 break-words font-sans max-w-[130px]">
-                      {rec.sepCause || '—'}
-                    </td>
+                  <tr key={i}>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.from}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.to}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.designation}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.status}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.salary}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.station}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.branch}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.lwop || 'None'}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">{rec.sepDate || ''}</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center">{rec.sepCause || ''}</td>
                   </tr>
                 ))}
-                {(employee.serviceRecords || []).length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="border border-slate-300 p-8 text-slate-400 italic text-xs text-center">
-                      No service records found in official database.
-                    </td>
+                
+                {/* Empty rows to fill space if needed */}
+                {Array.from({ length: Math.max(0, 15 - (employee.serviceRecords || []).length) }).map((_, i) => (
+                  <tr key={`empty-${i}`}>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap text-transparent">_</td>
+                    <td className="border-x border-black px-1 py-0.5 text-center text-transparent">_</td>
                   </tr>
-                )}
+                ))}
+                
+                {/* Bottom border of the table */}
+                <tr>
+                  <td colSpan={10} className="border-t border-black p-0 h-0"></td>
+                </tr>
               </tbody>
             </table>
           </div>
+
+          <div className="text-center text-[10px] italic mb-12">
+            Issued in compliance with Executive Order No. 54 dated August 10, 1954, and in accordance with<br/>
+            Circular No. 58 dated August 10, 1954 of the System.
+          </div>
+
+          <div className="flex justify-end items-end pr-12">
+            <div className="text-center relative">
+              <div className="text-[11px] font-bold text-left mb-6 absolute -left-32 top-0">CERTIFIED CORRECT:</div>
+              <div className="w-48 border-b border-black mb-1 mx-auto relative z-10">
+                {/* Signature would go here */}
+              </div>
+              <div className="font-bold text-[11px] mt-8">BIO C. GARCIA</div>
+              <div className="text-[10px]">Administrative Officer V</div>
+            </div>
+          </div>
+          
+          <div className="mt-8 text-[11px]">
+            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
 
-        {/* Scanned PDS image if exists */}
+        
+{/* Scanned PDS image if exists */}
         {employee.pdsScan && (
           <div className="p-4 flex flex-col items-center justify-center min-h-[90vh] text-center no-print-break" style={{ pageBreakBefore: 'always', breakBefore: 'page' }}>
             <h3 className="text-xs font-bold uppercase tracking-wider mb-1 text-slate-700">Scanned Personal Data Sheet (PDS)</h3>

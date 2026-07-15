@@ -24,13 +24,14 @@ const DOCUMENT_TYPES = [
 
 interface Props {
   employee: Employee;
+  allEmployees?: Employee[];
   onClose: () => void;
   onSave: (emp: Employee, isAutosave?: boolean) => void;
   initialTab?: 'personal' | 'family' | 'education' | 'service' | 'attachments';
   isSaving?: boolean;
 }
 
-export default function EditModal({ employee, onClose, onSave, initialTab = 'service', isSaving = false }: Props) {
+export default function EditModal({ employee, allEmployees = [], onClose, onSave, initialTab = 'service', isSaving = false }: Props) {
   const [formData, setFormData] = useState<Employee>({ ...employee });
   const [activeTab, setActiveTab] = useState<'service' | 'attachments'>(
     initialTab === 'attachments' ? 'attachments' : 'service'

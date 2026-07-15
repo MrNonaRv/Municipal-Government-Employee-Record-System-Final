@@ -225,8 +225,8 @@ export default function App() {
 
     // Setup listener for custom system storage status change
     const handleDriveStatusChanged = (e: any) => {
-      setIsDriveConnected(e.detail.connected);
-      if (e.detail.connected) {
+      setIsDriveConnected(e.detail?.connected || false);
+      if (e.detail?.connected) {
         const newProvider = e.detail.provider || 'gdrive';
         updateStorageProvider(newProvider);
         setDriveUser(e.detail.user || { email: e.detail.email });
@@ -547,14 +547,6 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end flex-wrap sm:flex-nowrap">
-            <button
-              onClick={() => setShowSyncHistory(true)}
-              aria-label="View Sync History"
-              className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial justify-center bg-[var(--navy-light)] hover:bg-[var(--navy-lighter)] border-white/10 text-white"
-            >
-              <Activity size={16} className="text-blue-400" />
-              <span className="hidden sm:inline">Sync Log</span>
-            </button>
             <button
               onClick={handleConnectDrive}
               disabled={isDriveConnecting}

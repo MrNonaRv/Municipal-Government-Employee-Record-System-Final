@@ -43,6 +43,7 @@ export default function EditModal({ employee, onClose, onSave, initialTab = 'ser
   // States for Storage Integration in EditModal
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
+  const [uploadEta, setUploadEta] = useState<number | null>(null);
   const [uploadDestination, setUploadDestination] = useState<'local' | 'drive'>('drive');
   const [storageProvider, setStorageProvider] = useState<'gdrive' | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
@@ -120,6 +121,22 @@ export default function EditModal({ employee, onClose, onSave, initialTab = 'ser
   const processFiles = async (files: File[]) => {
     setIsUploadingToDrive(true);
     setError(null);
+    
+    const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+    // Estimate: ~300KB/s processing and upload time
+    let estimatedSeconds = Math.max(Math.ceil(totalSize / (300 * 1024)), 2);
+    // Add extra time per file for overhead
+    estimatedSeconds += files.length * 2;
+    
+    setUploadEta(estimatedSeconds);
+    
+    const etaInterval = setInterval(() => {
+      setUploadEta(prev => {
+        if (prev === null || prev <= 1) return 1;
+        return prev - 1;
+      });
+    }, 1000);
+
     let newAttachments: Attachment[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -186,6 +203,9 @@ export default function EditModal({ employee, onClose, onSave, initialTab = 'ser
     }));
 
     if (fileInputRef.current) fileInputRef.current.value = '';
+
+    clearInterval(etaInterval);
+    setUploadEta(null);
     setIsUploadingToDrive(false);
   };
 
@@ -486,6 +506,11 @@ export default function EditModal({ employee, onClose, onSave, initialTab = 'ser
                                 <Loader2 size={32} className="animate-spin text-[var(--gold)]" />
                                 <div className="text-center">
                                   <p className="text-sm font-bold text-slate-700">Uploading files...</p>
+                                  {uploadEta !== null && (
+                                    <p className="text-xs text-blue-600 font-medium mt-1">
+                                      Estimated time: ~{uploadEta}s
+                                    </p>
+                                  )}
                                   <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Please wait</p>
                                 </div>
                               </>

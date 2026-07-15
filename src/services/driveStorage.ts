@@ -46,7 +46,7 @@ export const initDriveAuth = (
       cachedAccessToken = null;
       localStorage.removeItem('google_drive_access_token');
       localStorage.removeItem('gers_drive_user');
-  window.dispatchEvent(new CustomEvent('gers_drive_status_changed'));
+  window.dispatchEvent(new CustomEvent('gers_drive_status_changed', { detail: { connected: false, provider: null, user: null } }));
       if (onAuthFailure) onAuthFailure();
     }
   });

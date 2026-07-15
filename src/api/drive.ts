@@ -16,7 +16,7 @@ export async function loadGDriveConfig(firestoreDb: any, currentDirname: string)
       console.log('[Google Drive Config] Loaded local configuration:', sharedDriveConfig?.user?.email);
     } catch (e) {}
 
-    if (firestoreDb) {
+    if (false && firestoreDb) {
       const docRef = doc(firestoreDb, 'system_sync', 'google_drive_config');
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -43,7 +43,7 @@ export async function saveGDriveConfig(firestoreDb: any, currentDirname: string,
   sharedDriveConfig = config;
   try {
     await fs.writeFile(GDRIVE_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
-    if (firestoreDb) {
+    if (false && firestoreDb) {
       const docRef = doc(firestoreDb, 'system_sync', 'google_drive_config');
       await setDoc(docRef, config);
     }
@@ -60,7 +60,7 @@ export async function deleteGDriveConfig(firestoreDb: any, currentDirname: strin
     try {
       await fs.unlink(GDRIVE_CONFIG_FILE);
     } catch (e) {}
-    if (firestoreDb) {
+    if (false && firestoreDb) {
       const docRef = doc(firestoreDb, 'system_sync', 'google_drive_config');
       await deleteDoc(docRef);
     }
@@ -145,7 +145,7 @@ export function setupDriveRoutes(app: express.Express, firestoreDb: any, current
           rootFolderId = createFolderResponse.data.id!;
         }
       } catch (err: any) {
-        console.warn('Error finding/creating root folder:', err);
+        if (err.code === 401 || err.response?.status === 401) { console.warn('Drive token expired or invalid (root folder check)'); } else { console.warn('Error finding/creating root folder:', err.message); }
         if (err.code === 401 || err.response?.status === 401 || err.message?.includes('invalid authentication credentials')) {
           return res.status(401).json({ error: 'Google Drive authentication expired or invalid. Please reconnect.' });
         }
@@ -212,7 +212,7 @@ export function setupDriveRoutes(app: express.Express, firestoreDb: any, current
       });
 
     } catch (error: any) {
-      console.error('Drive upload error:', error);
+      console.error('Drive upload error:', error.message);
       if (error.code === 401 || error.response?.status === 401 || error.message?.includes('invalid authentication credentials')) {
         return res.status(401).json({ error: 'Google Drive authentication expired or invalid.' });
       }
@@ -256,7 +256,7 @@ export function setupDriveRoutes(app: express.Express, firestoreDb: any, current
       res.send(buffer);
 
     } catch (error: any) {
-      console.error('Drive download error:', error);
+      console.error('Drive download error:', error.message);
       if (error.code === 401 || error.response?.status === 401 || error.message?.includes('invalid authentication credentials')) {
         return res.status(401).json({ error: 'Google Drive authentication expired or invalid.' });
       }
@@ -287,7 +287,7 @@ export function setupDriveRoutes(app: express.Express, firestoreDb: any, current
 
       res.json({ success: true });
     } catch (error: any) {
-      console.error('Drive delete error:', error);
+      console.error('Drive delete error:', error.message);
       if (error.code === 401 || error.response?.status === 401 || error.message?.includes('invalid authentication credentials')) {
         return res.status(401).json({ error: 'Google Drive authentication expired or invalid.' });
       }

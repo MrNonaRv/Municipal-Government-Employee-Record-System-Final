@@ -408,6 +408,8 @@ export default function App() {
         return [...prev, emp];
       });
       
+      setViewingEmp(prev => prev?.id === emp.id ? emp : prev);
+      
       if (!isAutosave) {
         setEditingEmp(null);
         addToast('Record saved successfully', 'success');

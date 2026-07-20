@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useMemo, lazy, Suspense, useDeferredValue } from 'react';
 import { Employee } from './types/employee';
 import { dbGetAll, dbPut, dbDelete, syncOfflineData, getSyncQueue, isOnline, getWorkMode, setWorkMode, WorkMode, checkServerConnection, getServerReachable, dbClearAll, addActivityLog, getIsSyncing } from './services/db';
 import { generateEmptyEmployee } from './utils/helpers';
@@ -18,6 +18,7 @@ import { dataURLtoBlob } from './utils/helpers';
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -460,7 +461,7 @@ export default function App() {
   }, [employees]);
 
   const filteredEmployees = useMemo(() => {
-    const q = searchQuery.toLowerCase();
+    const q = deferredSearchQuery.toLowerCase();
     return employees.filter(emp => {
       const fullName = `${emp.firstName} ${emp.surname} ${emp.nameExtension || ""}`.toLowerCase();
       const latestSR = emp.serviceRecords.length > 0 ? emp.serviceRecords[emp.serviceRecords.length - 1] : null;
@@ -472,7 +473,7 @@ export default function App() {
       
       return matchesSearch && matchesStatus && matchesDept;
     });
-  }, [employees, searchQuery, statusFilter, departmentFilter]);
+  }, [employees, deferredSearchQuery, statusFilter, departmentFilter]);
 
   const permanentCount = useMemo(() => employees.filter(e => 
     e.serviceRecords.length > 0 && e.serviceRecords[e.serviceRecords.length - 1].status.toLowerCase().includes('perm')

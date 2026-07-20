@@ -116,13 +116,13 @@ export default function NOSAModal({ employee, onClose, onSave }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm print:static print:p-0 print:block print:bg-white"
     >
       <motion.div 
         initial={{ scale: 0.95, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 20 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row overflow-hidden max-h-[95vh]"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row overflow-hidden max-h-[95vh] print:max-h-none print:overflow-visible print:shadow-none print:w-full print:max-w-none print:block print:rounded-none"
       >
         {/* FORM SIDE (NO PRINT) */}
         <div className="w-full md:w-1/3 bg-slate-50 border-r border-slate-200 p-6 overflow-y-auto no-print flex flex-col">
@@ -275,108 +275,116 @@ export default function NOSAModal({ employee, onClose, onSave }: Props) {
         </div>
 
         {/* PREVIEW/PRINT SIDE */}
-        <div className="w-full md:w-2/3 bg-slate-200 p-8 overflow-y-auto flex justify-center print:p-0 print:bg-white print:overflow-visible print:block">
-          <div className="bg-white p-12 shadow-sm w-full max-w-[8.5in] min-h-[11in] text-black font-sans relative print:shadow-none print:w-full">
+        <div className="w-full md:w-2/3 bg-slate-200 p-8 overflow-y-auto overflow-x-auto flex justify-center items-start print:p-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div style={{ fontFamily: '"Times New Roman", Times, serif' }} className="bg-white p-[1in] shadow-sm w-[8.5in] min-w-[8.5in] max-w-[8.5in] shrink-0 min-h-[11in] text-black font-serif relative print:shadow-none print:w-full print:min-w-0 print:max-w-none print:min-h-0 print:p-[1in] mx-auto">
             {/* Header */}
-            <div className="flex justify-center items-center mb-8 relative">
-              <div className="absolute left-8">
-                {/* Placeholder for left logo */}
-                <div className="w-16 h-16 rounded-full border-2 border-slate-300"></div>
+            <div className="mb-8" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+              <div className="flex justify-between items-start">
+                <div className="w-[120px]">
+                  {/* Left Logo (Seal) */}
+                  <img src="/Systemlogo.jpg" alt="Seal" className="w-20 h-20 rounded-full mx-auto object-cover" />
+                </div>
+                <div className="flex-1 text-center leading-snug">
+                  <p className="text-[11pt]">Republic of the Philippines</p>
+                  <p className="text-[11pt]">Province of Capiz</p>
+                  <p className="text-[11pt]">Municipality of Mambusao</p>
+                  <p className="text-[14pt] font-bold uppercase mt-3 mb-1">OFFICE OF THE MAYOR</p>
+                  <p className="text-[10pt] italic">Telephone (036) 6470-045</p>
+                  <p className="text-[10pt] italic">Email Address: mambusao_lgu@yahoo.com</p>
+                </div>
+                <div className="w-[120px] flex justify-center">
+                  {/* Right Logo (Flag) */}
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/99/Flag_of_the_Philippines.svg" alt="Flag" className="w-24 h-[3rem] object-cover mt-2 border border-slate-200" />
+                </div>
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-xs">Republic of the Philippines</p>
-                <p className="text-xs">Province of Capiz</p>
-                <p className="text-xs font-bold">Municipality of Mambusao</p>
-                <p className="text-sm font-bold uppercase mt-2">OFFICE OF THE MAYOR</p>
-                <div className="w-full h-px bg-black my-2"></div>
-                <p className="text-[10px] italic">Telephone (036) 6470-045</p>
-                <p className="text-[10px] italic">Email Address: mambusao_lgu@yahoo</p>
-              </div>
-              <div className="absolute right-8">
-                {/* Placeholder for right logo */}
-                <div className="w-20 h-12 bg-slate-200"></div>
-              </div>
+              <div className="w-full h-[1px] bg-black mt-4"></div>
             </div>
 
-            <div className="text-center mb-10">
-              <h1 className="text-xl font-bold uppercase underline">NOTICE OF SALARY ADJUSTMENT</h1>
+            <div className="text-center mb-6">
+              <h1 className="text-[14pt] font-bold uppercase">NOTICE OF SALARY ADJUSTMENT</h1>
             </div>
 
-            <div className="flex justify-end mb-8">
-              <p className="text-sm">{new Date(dateOfNotice).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <div className="flex justify-end mb-6 text-[12pt]">
+              <p>{new Date(dateOfNotice).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
 
-            <div className="mb-8 text-sm space-y-1">
+            <div className="mb-6 text-[12pt] leading-tight">
               <p className="font-bold uppercase">{(employee.sex === 'Female' ? (employee.civilStatus === 'Married' ? 'MRS. ' : 'MS. ') : 'MR. ')} {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + '.' : ''} {employee.surname}</p>
               <p>{designation}</p>
               <p>Office of the {designation}</p>
               <p>Mambusao, Capiz</p>
             </div>
 
-            <div className="mb-6 text-sm">
+            <div className="mb-6 text-[12pt]">
               <p>Dear {(employee.sex === 'Female' ? (employee.civilStatus === 'Married' ? 'Mrs. ' : 'Ms. ') : 'Mr. ')} {employee.surname}:</p>
             </div>
 
-            <div className="mb-6 text-sm text-justify indent-8 leading-relaxed">
+            <div className="mb-6 text-[12pt] text-justify indent-12 leading-relaxed">
               <p>
                 Pursuant to Local Budget Circular No. {lbcNo}, dated {lbcDate} implementing Executive Order No. {eoNo} dated {eoDate}, your salary is hereby adjusted effective {newDate}, as follows:
               </p>
             </div>
 
-            <div className="px-8 space-y-6 text-sm mb-10">
+            <div className="pl-12 pr-8 space-y-6 text-[12pt] mb-8">
               <div className="flex justify-between items-start">
-                <div className="w-3/4">
-                  <p>1. Adjusted monthly basic salary effective {newDate}, under the new Salary Schedule; SG- {newSg}, Step {newStep}</p>
+                <div className="w-3/4 flex gap-4">
+                  <span>1.</span>
+                  <p>Adjusted monthly basic salary effective {newDate}, under<br/>the new Salary Schedule; SG- {newSg}, Step {newStep}</p>
                 </div>
-                <div className="w-1/4 text-right">
-                  <p>P {formattedNewSalary}</p>
+                <div className="w-1/4 flex gap-2">
+                  <span>P</span>
+                  <span className="text-right">{formattedNewSalary}</span>
                 </div>
               </div>
               
               <div className="flex justify-between items-start">
-                <div className="w-3/4">
-                  <p>2. Actual monthly basic salary as of {oldDate}; SG- {oldSg}, Step {oldStep}</p>
+                <div className="w-3/4 flex gap-4">
+                  <span>2.</span>
+                  <p>Actual monthly basic salary as of {oldDate};<br/>SG- {oldSg}, Step {oldStep}</p>
                 </div>
-                <div className="w-1/4 text-right">
-                  <p>P {formattedOldSalary}</p>
+                <div className="w-1/4 flex gap-2">
+                  <span>P</span>
+                  <span className="text-right">{formattedOldSalary}</span>
                 </div>
               </div>
               
-              <div className="flex justify-between items-start font-bold">
-                <div className="w-3/4">
-                  <p>3. Monthly Salary Adjustment effective {newDate}</p>
+              <div className="flex justify-between items-start">
+                <div className="w-3/4 flex gap-4">
+                  <span>3.</span>
+                  <p>Monthly Salary Adjustment effective {newDate}</p>
                 </div>
-                <div className="w-1/4 text-right">
-                  <p>P {monthlyAdjustment}</p>
+                <div className="w-1/4 flex gap-2">
+                  <span>P</span>
+                  <span className="text-right">{monthlyAdjustment}</span>
                 </div>
               </div>
             </div>
 
-            <div className="mb-16 text-sm text-justify indent-8 leading-relaxed">
+            <div className="mb-8 text-[12pt] text-justify indent-12 leading-relaxed">
               <p>
                 It is understood that this fourth tranche is subject to usual accounting and auditing rules and regulations, and to appropriate re-adjustment and refund if found not in order.
               </p>
             </div>
 
-            <div className="flex justify-end mb-16 pr-12 text-sm">
+            <div className="flex justify-end mb-8 pr-12 text-[12pt]">
               <div className="text-center">
-                <p className="text-left mb-8">Very truly yours,</p>
-                <p className="font-bold uppercase underline">{mayorName}</p>
+                <p className="text-left mb-10">Very truly yours,</p>
+                <p className="font-bold uppercase">{mayorName}</p>
                 <p>Municipal Mayor</p>
               </div>
             </div>
 
-            <div className="text-xs space-y-1">
+            <div className="text-[11pt] leading-tight">
               <p>Position Title: {designation}</p>
               <p>Salary Grade: {newSg}/{newStep}</p>
               <p>Item No. {itemNo}, FY {fy}, Plantilla of Personnel {fy}</p>
             </div>
 
-            <div className="mt-8 text-xs space-y-1">
+            <div className="mt-6 text-[11pt] leading-tight">
               <p>Copy furnished:</p>
-              <div className="pl-8">
+              <div className="pl-12">
                 <p>1. HRM Section</p>
-                <p className="pl-4">LGU- Mambusao, Capiz</p>
+                <p className="pl-6">LGU- Mambusao, Capiz</p>
                 <p>2. GSIS- Roxas City</p>
               </div>
             </div>

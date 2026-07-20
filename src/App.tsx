@@ -17,7 +17,12 @@ import { dataURLtoBlob } from './utils/helpers';
 
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(inputValue), 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
@@ -629,7 +634,7 @@ export default function App() {
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Permanent</span>
               <span className="font-mono text-base sm:text-lg font-bold text-[var(--green)]">{permanentCount}</span>
             </div>
-            {searchQuery && (
+            {inputValue && (
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Filtered</span>
                 <span className="font-mono text-base sm:text-lg font-bold text-[var(--gold-dark)]">{filteredEmployees.length}</span>
@@ -695,8 +700,8 @@ export default function App() {
                 <input 
                   type="text" 
                   placeholder="Search records..." 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
                   aria-label="Search employees"
                   className="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm h-10"
                 />

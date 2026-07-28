@@ -468,7 +468,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
               )}
               {activeTab === 'leaves' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
-                  <LeaveCardViewer employee={employee} />
+                  <LeaveCardViewer employee={employee} onSave={onSave} />
                 </div>
               )}
               {activeTab === 'docs' && (

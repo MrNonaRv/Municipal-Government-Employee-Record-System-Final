@@ -1,18 +1,14 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/components/LeaveCardEditor.tsx', 'utf8');
+let code = fs.readFileSync('src/components/LeaveCardViewer.tsx', 'utf8');
 
-const targetRecalc = `  const recalculateBalances = (recordsList: LeaveRecord[], editedId?: string) => {
-    let currentVl = 0;
-    let currentSl = 0;
-    return recordsList.map((rec) => {`;
+const target = `    newRecords = recalculateBalances(newRecords, id.startsWith('new-') ? undefined : id);`;
+const replacement = `    const isBalanceEdit = field === 'vlBalance' || field === 'slBalance';
+    newRecords = recalculateBalances(newRecords, id.startsWith('new-') ? undefined : (isBalanceEdit ? id : undefined));`;
 
-const replaceRecalc = `  const recalculateBalances = (recordsList: LeaveRecord[], editedId?: string) => {
-    let currentVl = 0;
-    let currentSl = 0;
-    return recordsList.map((rec) => {
-      if (rec.isSeparator) {
-        return { ...rec };
-      }`;
-
-code = code.replace(targetRecalc, replaceRecalc);
-fs.writeFileSync('src/components/LeaveCardEditor.tsx', code);
+if (code.includes(target)) {
+  code = code.replace(target, replacement);
+  fs.writeFileSync('src/components/LeaveCardViewer.tsx', code);
+  console.log('patched recalculation logic');
+} else {
+  console.log('could not find target');
+}

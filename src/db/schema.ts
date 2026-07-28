@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
-import type { Child, Education, ServiceRecord, Attachment } from '../types/employee';
+import type { Child, Education, ServiceRecord, Attachment, NOSARecord, LeaveRecord } from '../types/employee';
 
 // Define the 'users' table.
 export const users = pgTable('users', {
@@ -64,6 +64,8 @@ export const employees = pgTable('employees', {
   education: jsonb('education').$type<Education[]>().default([]),
   serviceRecords: jsonb('service_records').$type<ServiceRecord[]>().default([]),
   attachments: jsonb('attachments').$type<Attachment[]>().default([]),
+  nosaRecords: jsonb('nosa_records').$type<NOSARecord[]>().default([]),
+  leaveRecords: jsonb('leave_records').$type<LeaveRecord[]>().default([]),
   pdsScan: text('pds_scan'),
   
   createdAt: timestamp('created_at').defaultNow(),

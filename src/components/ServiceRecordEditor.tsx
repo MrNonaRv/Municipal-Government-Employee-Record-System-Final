@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { ServiceRecord } from '../types/employee';
 import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
 
@@ -7,7 +7,7 @@ interface Props {
   onChange: (records: ServiceRecord[]) => void;
 }
 
-export default function ServiceRecordEditor({ records, onChange }: Props) {
+const ServiceRecordEditor = memo(function ServiceRecordEditor({ records, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ServiceRecord>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -479,4 +479,5 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
       </div>
     </div>
   );
-}
+});
+export default ServiceRecordEditor;

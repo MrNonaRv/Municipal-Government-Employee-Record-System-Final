@@ -190,10 +190,10 @@ export const getSyncQueue = async (): Promise<SyncItem[]> => {
 };
 
 // Helper to save sync queue
-export const saveSyncQueue = (queue: SyncItem[]): void => {
+export const saveSyncQueue = async (queue: SyncItem[]): Promise<void> => {
   try {
     console.log(`[saveSyncQueue] Saving sync queue with ${queue.length} items.`);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    await set(QUEUE_KEY, JSON.stringify(queue));
   } catch (e) {
     console.error('[saveSyncQueue] Failed to save sync queue', e);
   }
@@ -604,7 +604,7 @@ export const syncOfflineData = async (
     }
 
     console.log(`[syncOfflineData] Finished processing. Remaining failed items: ${failedItems.length}`);
-    saveSyncQueue(failedItems);
+    await saveSyncQueue(failedItems);
     window.dispatchEvent(new CustomEvent('gers_sync_status_change'));
 
     if (failedItems.length > 0) {

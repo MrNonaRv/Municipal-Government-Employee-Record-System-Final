@@ -19,6 +19,7 @@ export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(12);
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(inputValue), 300);
     return () => clearTimeout(timer);
@@ -75,7 +76,7 @@ export default function App() {
   // Modals state
   const [viewingEmp, setViewingEmp] = useState<Employee | null>(null);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
-  const [editTab, setEditTab] = useState<'service' | 'attachments'>('service');
+  const [editTab, setEditTab] = useState<'service' | 'attachments' | 'leaves'>('service');
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [csvModalTab, setCsvModalTab] = useState<'bulk' | 'single' | 'export' | 'gdrive'>('bulk');
   const [deletingEmp, setDeletingEmp] = useState<Employee | null>(null);
@@ -465,6 +466,10 @@ export default function App() {
     return Array.from(depts).sort();
   }, [employees]);
 
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [searchQuery, departmentFilter, statusFilter]);
+
   const filteredEmployees = useMemo(() => {
     const q = deferredSearchQuery.toLowerCase();
     return employees.filter(emp => {
@@ -678,7 +683,7 @@ export default function App() {
               <select
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 max-w-[150px] truncate"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 sm:max-w-[150px] truncate"
               >
                 <option value="">All Stations</option>
                 {uniqueDepartments.map(dept => (
@@ -688,7 +693,7 @@ export default function App() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 max-w-[150px] truncate"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-[var(--gold)] text-sm h-10 sm:max-w-[150px] truncate"
               >
                 <option value="">All Statuses</option>
                 {uniqueStatuses.map(status => (
@@ -751,6 +756,7 @@ export default function App() {
             </button>
           </motion.div>
         ) : (
+          <>
           <motion.div 
             layout
             className={viewMode === 'grid' 
@@ -759,7 +765,7 @@ export default function App() {
             }
           >
             <AnimatePresence mode="popLayout">
-              {filteredEmployees.map(emp => (
+              {filteredEmployees.slice(0, visibleCount).map(emp => (
                 <motion.div
                   key={emp.id}
                   layout
@@ -779,6 +785,17 @@ export default function App() {
               ))}
             </AnimatePresence>
           </motion.div>
+          {visibleCount < filteredEmployees.length && (
+            <div className="flex justify-center mt-8 pb-8">
+              <button
+                onClick={() => setVisibleCount(prev => prev + 12)}
+                className="px-6 py-3 bg-white border border-slate-200 hover:border-[var(--gold)] text-slate-700 font-bold rounded-full transition-all shadow-sm flex items-center gap-2"
+              >
+                Load More Records
+              </button>
+            </div>
+          )}
+          </>
         )}
       </main>
 
@@ -822,7 +839,12 @@ export default function App() {
                 }
               });
               // Optimize: Parallel database writes
-              await Promise.all(imported.map(emp => dbPut(emp)));
+              // Optimize: Chunked parallel database writes to prevent UI freeze
+              const chunkSize = 50;
+              for (let i = 0; i < imported.length; i += chunkSize) {
+                const chunk = imported.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(emp => dbPut(emp)));
+              }
               await loadEmployees();
               setIsCSVModalOpen(false);
               addToast(`Imported ${imported.length} records`, 'success');
@@ -880,7 +902,7 @@ export default function App() {
               return (
                 <tr key={emp.id}>
                   <td className="border border-black p-2 font-mono">{emp.id}</td>
-                  <td className="border border-black p-2 font-bold">{emp.surname}, {emp.firstName} {emp.middleName ? emp.middleName.charAt(0) + "." : ""} {emp.nameExtension || ""}</td>
+                  <td className="border border-black p-2 font-bold uppercase">{emp.surname}, {emp.firstName} {emp.middleName ? emp.middleName.charAt(0) + "." : ""} {emp.nameExtension || ""}</td>
                   <td className="border border-black p-2">{emp.sex}</td>
                   <td className="border border-black p-2">{emp.civilStatus}</td>
                   <td className="border border-black p-2">{latest?.designation || 'N/A'}</td>

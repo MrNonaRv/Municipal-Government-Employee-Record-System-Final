@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Employee } from '../types/employee';
 import { User, Briefcase, MapPin, Phone, Mail, Eye, Edit, Trash2, Calendar, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -11,7 +11,7 @@ interface Props {
   onDelete: (emp: Employee) => void;
 }
 
-export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDelete }: Props) {
+const EmployeeCard = memo(function EmployeeCard({ employee, viewMode, onView, onEdit, onDelete }: Props) {
   const latestSR = (employee.serviceRecords || []).length > 0 
     ? (employee.serviceRecords || [])[(employee.serviceRecords || []).length - 1] 
     : null;
@@ -20,7 +20,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
     return (
       <motion.div 
         whileHover={{ x: 4 }}
-        className="bg-white rounded-2xl p-4 flex items-center gap-6 shadow-sm border border-slate-200 hover:border-[var(--gold)] transition-all group"
+        className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 shadow-sm border border-slate-200 hover:border-[var(--gold)] transition-all group"
       >
         <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 flex-shrink-0">
           {employee.photo ? (
@@ -41,7 +41,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
         <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="flex flex-col">
             <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Full Name</span>
-            <h3 className="font-bold text-slate-900 truncate">{employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}</h3>
+            <h3 className="font-bold text-slate-900 truncate uppercase">{employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}</h3>
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Designation</span>
@@ -61,7 +61,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
           </div>
         </div>
 
-        <div className="flex items-center gap-2 max-md:opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
+        <div className="w-full sm:w-auto flex items-center justify-end sm:justify-start gap-2 max-md:opacity-100 md:opacity-0 group-hover:opacity-100 transition-all mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
           
           <button 
             onClick={(e) => { e.stopPropagation(); onEdit(employee); }} 
@@ -107,7 +107,7 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
         <div className="absolute bottom-4 left-4 right-4">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--gold)] mb-1 block">Official Record</span>
-          <h3 className="text-white font-playfair text-xl font-bold leading-tight truncate">
+          <h3 className="text-white font-playfair text-xl font-bold leading-tight truncate uppercase">
             {employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}
           </h3>
         </div>
@@ -185,4 +185,5 @@ export default function EmployeeCard({ employee, viewMode, onView, onEdit, onDel
       </div>
     </motion.div>
   );
-}
+});
+export default EmployeeCard;

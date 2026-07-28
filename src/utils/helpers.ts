@@ -57,7 +57,8 @@ export const generateEmptyEmployee = (): import('../types/employee').Employee =>
   motherSurname: '', motherFirstName: '', motherMiddleName: '',
   education: [],
   serviceRecords: [],
-  pdsScan: null
+  pdsScan: null,
+  leaveRecords: []
 });
 
 

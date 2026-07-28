@@ -1,3 +1,21 @@
+
+export interface LeaveRecord {
+  id: string;
+  period: string;
+  vlEarned: string;
+  vlAbsUndWp: string;
+  vlBalance: string;
+  vlAbsUndWop: string;
+  vlManual?: boolean;
+  slEarned: string;
+  slAbsUndWp: string;
+  slBalance: string;
+  slAbsUndWop: string;
+  slManual?: boolean;
+  dateAndAction: string;
+  isSeparator?: boolean;
+}
+
 export interface NOSARecord {
   id: string;
   dateOfNotice: string;
@@ -113,6 +131,7 @@ export interface Employee {
   serviceRecords: ServiceRecord[];
   attachments?: Attachment[];
   nosaRecords?: NOSARecord[];
+  leaveRecords?: LeaveRecord[];
   pdsScan?: string | null;
 }
 

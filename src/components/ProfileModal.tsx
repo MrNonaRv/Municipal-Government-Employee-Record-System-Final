@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Employee, Attachment } from '../types/employee';
 import { Printer, Edit, Trash2, X, FileText, History, Users, ShieldCheck, MapPin, Phone, Mail, Calendar, Download, ArrowLeft, FileUp, Eye, ZoomIn, Cloud, Loader2, ExternalLink, Calculator, AlertTriangle } from 'lucide-react';
 import NOSAModal from './NOSAModal';
+import LeaveCardViewer from './LeaveCardViewer';
 import { motion, AnimatePresence } from 'motion/react';
 import { downloadFileFromDrive as downloadFileFromGDrive, deleteFileFromDrive } from '../services/driveStorage';
 import { PreviewModal } from './PreviewModal';
@@ -9,7 +10,7 @@ import { PreviewModal } from './PreviewModal';
 interface Props {
   employee: Employee;
   onClose: () => void;
-  onEdit: (emp: Employee, tab?: 'service' | 'attachments') => void;
+  onEdit: (emp: Employee, tab?: 'service' | 'attachments' | 'leaves') => void;
   onDelete: (emp: Employee) => void;
   onSave?: (emp: Employee) => void;
 }
@@ -73,7 +74,7 @@ const DocumentThumbnail = ({ doc, onPreview }: { doc: Attachment; onPreview: (do
 };
 
 export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSave }: Props) {
-  const [activeTab, setActiveTab] = useState<'sr' | 'docs'>('sr');
+  const [activeTab, setActiveTab] = useState<'sr' | 'docs' | 'leaves'>('sr');
   const [showDigitalPds, setShowDigitalPds] = useState<boolean>(!employee.pdsScan);
   const [showNosa, setShowNosa] = useState<boolean>(false);
   const [isFullScreenPds, setIsFullScreenPds] = useState<boolean>(false);
@@ -225,7 +226,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
                 <ShieldCheck size={16} className="text-[var(--gold)]" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Classified Personnel File</span>
               </div>
-              <h2 id="profile-modal-title" className="font-playfair text-2xl font-bold tracking-tight">
+              <h2 id="profile-modal-title" className="font-playfair text-2xl font-bold tracking-tight uppercase">
                 {employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}
               </h2>
             </div>
@@ -243,6 +244,17 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
               >
                 <History size={14} />
                 Service History
+              </button>
+              <button 
+                role="tab" 
+                id="tab-leaves"
+                aria-controls="panel-leaves"
+                aria-selected={activeTab === 'leaves'} 
+                onClick={() => setActiveTab('leaves')} 
+                className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex-shrink-0 ${activeTab === 'leaves' ? 'bg-[var(--gold)] text-[var(--navy)] shadow-lg shadow-gold/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+              >
+                <Calendar size={14} />
+                Leave Card
               </button>
               <button 
                 role="tab" 
@@ -284,7 +296,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
               <span className="hidden sm:inline">Print</span>
             </button>
             <button 
-              onClick={() => onEdit(employee, activeTab === 'sr' ? 'service' : 'attachments')} 
+              onClick={() => onEdit(employee, activeTab === 'sr' ? 'service' : activeTab === 'leaves' ? 'leaves' : 'attachments')} 
               aria-label="Edit record"
               className="flex items-center gap-2 p-2.5 md:px-5 md:py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/10 group"
             >
@@ -386,7 +398,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
                     </p>
 
                     {/* Records Table */}
-                    <div className="border border-slate-300 rounded-xl overflow-hidden">
+                    <div className="border border-slate-300 rounded-xl overflow-x-auto">
                       <table className="w-full border-collapse border border-slate-300 text-[10px] leading-normal text-center bg-white">
                         <thead>
                           <tr className="bg-slate-50 text-slate-850 font-extrabold uppercase border-b border-slate-300">
@@ -454,6 +466,11 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
                   </div>
                 </motion.div>
               )}
+              {activeTab === 'leaves' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+                  <LeaveCardViewer employee={employee} />
+                </div>
+              )}
               {activeTab === 'docs' && (
                 <div className="w-full max-w-6xl mx-auto bg-white rounded-3xl shadow-xl p-6 md:p-12 relative z-10">
                   <motion.div 
@@ -470,7 +487,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
                       <div className="flex justify-between items-start">
                         <div className="w-16 h-16 md:w-20 md:h-20 hidden sm:block invisible"></div> {/* Spacer */}
                         <div className="text-center flex-1">
-                          <h2 className="font-playfair font-black text-2xl md:text-3xl mt-2 mb-2 text-[var(--navy)] tracking-tight">SCANNED DOCUMENTS GALLERY</h2>
+                          <h2 className="font-playfair font-black text-2xl md:text-3xl mt-2 mb-2 text-[var(--navy)] tracking-tight uppercase">SCANNED DOCUMENTS GALLERY</h2>
                           <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-slate-400">Official Personnel Scans & Dossier Attachments</p>
                           <div className="w-16 h-1 bg-[var(--gold)] mx-auto mt-4"></div>
                         </div>
@@ -787,7 +804,7 @@ export default function ProfileModal({ employee, onClose, onEdit, onDelete, onSa
           >
             <div className="w-full flex justify-between items-center text-white select-none">
               <div className="flex flex-col">
-                <h2 className="font-playfair text-xl font-bold">{employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}</h2>
+                <h2 className="font-playfair text-xl font-bold uppercase">{employee.surname}, {employee.firstName} {employee.middleName ? employee.middleName.charAt(0) + "." : ""} {employee.nameExtension || ""}</h2>
                 <p className="text-[9px] font-bold tracking-widest uppercase text-slate-400">Personal Data Sheet Worksheet Scan</p>
               </div>
               <div className="flex items-center gap-3">

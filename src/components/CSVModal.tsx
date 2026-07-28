@@ -334,14 +334,14 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
           </button>
         </div>
         
-        <div className="flex border-b border-gray-200 bg-gray-50 px-4" role="tablist" aria-label="Import and export options">
+        <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none border-b border-gray-200 bg-gray-50 px-4" role="tablist" aria-label="Import and export options">
           <button 
             role="tab" 
             id="tab-bulk"
             aria-controls="panel-bulk"
             aria-selected={activeTab === 'bulk'} 
             onClick={() => { setActiveTab('bulk'); setPreviewData([]); }} 
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'bulk' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${activeTab === 'bulk' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
           >
             <FileSpreadsheet size={16}/> Bulk CSV
           </button>
@@ -351,7 +351,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
             aria-controls="panel-single"
             aria-selected={activeTab === 'single'} 
             onClick={() => { setActiveTab('single'); setPreviewData([]); }} 
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'single' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${activeTab === 'single' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
           >
             <FileJson size={16}/> Single Record
           </button>
@@ -361,7 +361,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
             aria-controls="panel-export"
             aria-selected={activeTab === 'export'} 
             onClick={() => setActiveTab('export')} 
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'export' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${activeTab === 'export' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
           >
             <Download size={16}/> Export
           </button>
@@ -371,7 +371,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
             aria-controls="panel-gdrive"
             aria-selected={activeTab === 'gdrive'} 
             onClick={() => setActiveTab('gdrive')} 
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'gdrive' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${activeTab === 'gdrive' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
           >
             <UploadCloud size={16}/> Google Drive
           </button>
@@ -381,7 +381,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
             aria-controls="panel-logs"
             aria-selected={activeTab === 'logs'} 
             onClick={() => setActiveTab('logs')} 
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'logs' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${activeTab === 'logs' ? 'border-[var(--gold)] text-[var(--navy)]' : 'border-transparent text-gray-500'}`}
           >
             <Clock size={16}/> Activity Log
           </button>
@@ -447,7 +447,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
                       <tbody>
                         {previewData.slice(0, 8).map((emp, i) => (
                           <tr key={i} className="border-b last:border-0">
-                            <td className="px-3 py-2">{emp.firstName} {emp.surname}</td>
+                            <td className="px-3 py-2 uppercase">{emp.firstName} {emp.surname}</td>
                             <td className="px-3 py-2">{emp.email}</td>
                           </tr>
                         ))}
@@ -494,7 +494,7 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
                       {selectedForExport.has(emp.id) ? <CheckSquare size={18}/> : <Square size={18}/>}
                     </button>
                     <div>
-                      <div className="font-medium">{emp.firstName} {emp.surname}</div>
+                      <div className="font-medium uppercase">{emp.firstName} {emp.surname}</div>
                       <div className="text-xs text-gray-500">{emp.id}</div>
                     </div>
                   </div>

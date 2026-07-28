@@ -1,0 +1,483 @@
+import React, { useState, memo } from 'react';
+import { LeaveRecord } from '../types/employee';
+import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+
+interface Props {
+  records: LeaveRecord[];
+  onChange: (records: LeaveRecord[]) => void;
+}
+
+const LeaveCardEditor = memo(function LeaveCardEditor({ records, onChange }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<LeaveRecord>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [bulkYear, setBulkYear] = useState<string>(new Date().getFullYear().toString());
+
+  const handleFieldChange = (field: keyof LeaveRecord, value: string) => {
+    const newForm = { ...editForm, [field]: value };
+    
+    if (field === 'vlBalance') {
+      newForm.vlManual = true;
+    }
+    
+    if (field === 'slBalance') {
+      newForm.slManual = true;
+    }
+    
+    if (field === 'vlEarned' || field === 'vlAbsUndWp') {
+      newForm.vlManual = false;
+      const earned = parseFloat(newForm.vlEarned || '0') || 0;
+      const abs = parseFloat(newForm.vlAbsUndWp || '0') || 0;
+      const currentIndex = records.findIndex(r => r.id === editingId);
+      let prevBalance = 0;
+      if (currentIndex > 0) {
+        prevBalance = parseFloat(records[currentIndex - 1].vlBalance || '0') || 0;
+      }
+      const newBalance = prevBalance + earned - abs;
+      newForm.vlBalance = Number(newBalance.toFixed(3)).toString();
+    }
+    
+    if (field === 'slEarned' || field === 'slAbsUndWp') {
+      newForm.slManual = false;
+      const earned = parseFloat(newForm.slEarned || '0') || 0;
+      const abs = parseFloat(newForm.slAbsUndWp || '0') || 0;
+      const currentIndex = records.findIndex(r => r.id === editingId);
+      let prevBalance = 0;
+      if (currentIndex > 0) {
+        prevBalance = parseFloat(records[currentIndex - 1].slBalance || '0') || 0;
+      }
+      const newBalance = prevBalance + earned - abs;
+      newForm.slBalance = Number(newBalance.toFixed(3)).toString();
+    }
+    
+    setEditForm(newForm);
+  };
+
+  const handleAdd = () => {
+    const newId = 'lc-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+    
+    let prevVlBalance = 0;
+    let prevSlBalance = 0;
+    if (records.length > 0) {
+      prevVlBalance = parseFloat(records[records.length - 1].vlBalance || '0') || 0;
+      prevSlBalance = parseFloat(records[records.length - 1].slBalance || '0') || 0;
+    }
+    
+    const newRecord: LeaveRecord = {
+      id: newId,
+      period: '',
+      vlEarned: '1.25',
+      vlAbsUndWp: '',
+      vlBalance: Number((prevVlBalance + 1.25).toFixed(3)).toString(),
+      vlAbsUndWop: '',
+      slEarned: '1.25',
+      slAbsUndWp: '',
+      slBalance: Number((prevSlBalance + 1.25).toFixed(3)).toString(),
+      slAbsUndWop: '',
+      dateAndAction: ''
+    };
+    onChange([...records, newRecord]);
+    setEditingId(newId);
+    setEditForm(newRecord);
+    setError(null);
+  };
+
+  const handleEdit = (rec: LeaveRecord) => {
+    setEditingId(rec.id);
+    setEditForm(rec);
+    setError(null);
+  };
+
+  const recalculateBalances = (recordsList: LeaveRecord[], editedId?: string) => {
+    let currentVl = 0;
+    let currentSl = 0;
+    return recordsList.map((rec) => {
+      if (rec.id === editedId || rec.vlManual) {
+        currentVl = parseFloat(rec.vlBalance || '0') || 0;
+      } else {
+        const vlEarnedStr = rec.vlEarned?.trim() || '';
+        const vlAbsStr = rec.vlAbsUndWp?.trim() || '';
+        
+        if (vlEarnedStr === '' && vlAbsStr === '' && rec.vlBalance) {
+          currentVl = parseFloat(rec.vlBalance || '0') || 0;
+        } else {
+          const vlEarned = parseFloat(vlEarnedStr || '0') || 0;
+          const vlAbs = parseFloat(vlAbsStr || '0') || 0;
+          currentVl = currentVl + vlEarned - vlAbs;
+          rec.vlBalance = Number(currentVl.toFixed(3)).toString();
+        }
+      }
+
+      if (rec.id === editedId || rec.slManual) {
+        currentSl = parseFloat(rec.slBalance || '0') || 0;
+      } else {
+        const slEarnedStr = rec.slEarned?.trim() || '';
+        const slAbsStr = rec.slAbsUndWp?.trim() || '';
+        
+        if (slEarnedStr === '' && slAbsStr === '' && rec.slBalance) {
+          currentSl = parseFloat(rec.slBalance || '0') || 0;
+        } else {
+          const slEarned = parseFloat(slEarnedStr || '0') || 0;
+          const slAbs = parseFloat(slAbsStr || '0') || 0;
+          currentSl = currentSl + slEarned - slAbs;
+          rec.slBalance = Number(currentSl.toFixed(3)).toString();
+        }
+      }
+
+      return { ...rec };
+    });
+  };
+
+  const handleSave = () => {
+    if (!editingId) return;
+    if (!editForm.period?.trim()) {
+      setError("Period/Particulars is required.");
+      return;
+    }
+
+    setError(null);
+    const updatedRecords = records.map(r => r.id === editingId ? { ...r, ...editForm } as LeaveRecord : r);
+    onChange(recalculateBalances(updatedRecords, editingId));
+    setEditingId(null);
+  };
+
+  const handleDelete = (id: string) => {
+    const updatedRecords = records.filter(r => r.id !== id);
+    onChange(recalculateBalances(updatedRecords));
+    setDeletingId(null);
+  };
+
+  const renderEditFormFields = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Period / Particulars</label>
+          <input 
+            type="text" 
+            value={editForm.period || ''} 
+            onChange={e => handleFieldChange('period', e.target.value)} 
+            className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm bg-white" 
+            placeholder="e.g. 2024 Jan"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Date and Action Taken</label>
+          <input 
+            type="text" 
+            value={editForm.dateAndAction || ''} 
+            onChange={e => handleFieldChange('dateAndAction', e.target.value)} 
+            className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm bg-white" 
+            placeholder="e.g. Approved 01/15/2024"
+          />
+        </div>
+      </div>
+      
+      {/* Vacation Leave */}
+      <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 space-y-2">
+        <h4 className="font-bold text-blue-900 text-[10px] uppercase tracking-wider">Vacation Leave</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">Earned</label>
+            <input type="text" value={editForm.vlEarned || ''} onChange={e => handleFieldChange('vlEarned', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">Abs/Und W/P</label>
+            <input type="text" value={editForm.vlAbsUndWp || ''} onChange={e => handleFieldChange('vlAbsUndWp', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[var(--navy)] mb-1">Balance</label>
+            <input type="text" value={editForm.vlBalance || ''} onChange={e => handleFieldChange('vlBalance', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white font-bold" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-red-500 mb-1">Abs/Und WOP</label>
+            <input type="text" value={editForm.vlAbsUndWop || ''} onChange={e => handleFieldChange('vlAbsUndWop', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white text-red-600 font-bold" />
+          </div>
+        </div>
+      </div>
+
+      {/* Sick Leave */}
+      <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 space-y-2">
+        <h4 className="font-bold text-emerald-900 text-[10px] uppercase tracking-wider">Sick Leave</h4>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">Earned</label>
+            <input type="text" value={editForm.slEarned || ''} onChange={e => handleFieldChange('slEarned', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">Abs/Und W/P</label>
+            <input type="text" value={editForm.slAbsUndWp || ''} onChange={e => handleFieldChange('slAbsUndWp', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[var(--navy)] mb-1">Balance</label>
+            <input type="text" value={editForm.slBalance || ''} onChange={e => handleFieldChange('slBalance', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white font-bold" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-red-500 mb-1">Abs/Und WOP</label>
+            <input type="text" value={editForm.slAbsUndWop || ''} onChange={e => handleFieldChange('slAbsUndWop', e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white text-red-600 font-bold" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-[var(--navy)]">Leave Records</h3>
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center bg-white border border-slate-300 rounded overflow-hidden">
+            <input 
+              type="text" 
+              value={bulkYear}
+              onChange={(e) => setBulkYear(e.target.value)}
+              className="w-16 px-2 py-1.5 text-sm text-center focus:outline-none"
+              placeholder="YYYY"
+            />
+            <button 
+              type="button" 
+              onClick={() => {
+                const year = bulkYear || new Date().getFullYear().toString();
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                let currentVlBalance = 0;
+                let currentSlBalance = 0;
+                if (records.length > 0) {
+                  currentVlBalance = parseFloat(records[records.length - 1].vlBalance || '0') || 0;
+                  currentSlBalance = parseFloat(records[records.length - 1].slBalance || '0') || 0;
+                }
+                const newRecords = months.map((m, i) => {
+                  currentVlBalance += 1.25;
+                  currentSlBalance += 1.25;
+                  return {
+                    id: 'lc-' + Date.now().toString(36) + '-' + i + '-' + Math.random().toString(36).substring(2, 9),
+                    period: year + ' ' + m,
+                    vlEarned: '1.25', vlAbsUndWp: '', vlBalance: Number(currentVlBalance.toFixed(3)).toString(), vlAbsUndWop: '',
+                    slEarned: '1.25', slAbsUndWp: '', slBalance: Number(currentSlBalance.toFixed(3)).toString(), slAbsUndWop: '',
+                    dateAndAction: ''
+                  };
+                });
+                onChange(recalculateBalances([...records, ...newRecords]));
+              }} 
+              className="flex items-center gap-1 px-3 py-1.5 bg-[var(--gold)] text-[var(--navy)] text-sm font-bold hover:bg-opacity-90 transition-colors"
+            >
+              <Plus size={14} /> Add Year
+            </button>
+          </div>
+          <button 
+            type="button" 
+            onClick={handleAdd} 
+            aria-label="Add new leave record entry"
+            className="flex items-center gap-1 px-3 py-1.5 bg-[var(--navy)] text-white rounded text-sm hover:bg-opacity-90 transition-colors"
+          >
+            <Plus size={16} /> Add Row
+          </button>
+        </div>
+      </div>
+
+      {/* DESKTOP HIGH-DENSITY TABLE VIEW (Visible on tablet/desktop, hidden on mobile) */}
+      <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 text-gray-700 uppercase text-[10px] border-b border-gray-200 font-bold">
+            <tr>
+              <th rowSpan={2} className="px-3 py-2 border-r border-gray-200 align-middle w-[15%]">Period / Particulars</th>
+              <th colSpan={4} className="px-3 py-1 border-r border-gray-200 text-center bg-blue-50/50 text-blue-800 border-b">Vacation Leave</th>
+              <th colSpan={4} className="px-3 py-1 border-r border-gray-200 text-center bg-emerald-50/50 text-emerald-800 border-b">Sick Leave</th>
+              <th rowSpan={2} className="px-3 py-2 border-r border-gray-200 align-middle w-[15%]">Action Taken</th>
+              <th rowSpan={2} className="px-3 py-2 align-middle w-[10%]">Actions</th>
+            </tr>
+            <tr className="border-b border-gray-200">
+              <th className="px-2 py-1 border-r border-gray-200 bg-blue-50/30 text-center" title="Earned">Earned</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-blue-50/30 text-center" title="Absence/Undertime With Pay">Abs/Und W/P</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-blue-50/30 text-center" title="Balance">Balance</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-blue-50/30 text-center text-red-600" title="Absence/Undertime Without Pay">Abs/Und WOP</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-emerald-50/30 text-center" title="Earned">Earned</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-emerald-50/30 text-center" title="Absence/Undertime With Pay">Abs/Und W/P</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-emerald-50/30 text-center" title="Balance">Balance</th>
+              <th className="px-2 py-1 border-r border-gray-200 bg-emerald-50/30 text-center text-red-600" title="Absence/Undertime Without Pay">Abs/Und WOP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-3 py-8 text-center text-gray-500">No leave records found.</td>
+              </tr>
+            )}
+            {records.map(rec => (
+              <React.Fragment key={rec.id}>
+                {editingId === rec.id ? (
+                  <tr className="bg-blue-50 border-b border-gray-200">
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.period || ''} onChange={e => handleFieldChange('period', e.target.value)} className="w-full text-xs p-1 border rounded bg-white" placeholder="Period" />
+                      {error && !editForm.period?.trim() && <div className="text-red-500 text-[9px] mt-0.5 leading-tight">{error}</div>}
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlEarned || ''} onChange={e => handleFieldChange('vlEarned', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlAbsUndWp || ''} onChange={e => handleFieldChange('vlAbsUndWp', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlBalance || ''} onChange={e => handleFieldChange('vlBalance', e.target.value)} className="w-full text-xs p-1 text-center font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlAbsUndWop || ''} onChange={e => handleFieldChange('vlAbsUndWop', e.target.value)} className="w-full text-xs p-1 text-center text-red-500 font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slEarned || ''} onChange={e => handleFieldChange('slEarned', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slAbsUndWp || ''} onChange={e => handleFieldChange('slAbsUndWp', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slBalance || ''} onChange={e => handleFieldChange('slBalance', e.target.value)} className="w-full text-xs p-1 text-center font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slAbsUndWop || ''} onChange={e => handleFieldChange('slAbsUndWop', e.target.value)} className="w-full text-xs p-1 text-center text-red-500 font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.dateAndAction || ''} onChange={e => handleFieldChange('dateAndAction', e.target.value)} className="w-full text-xs p-1 border rounded bg-white" placeholder="Action" />
+                    </td>
+                    <td className="px-1 py-1 text-center align-top">
+                      <div className="flex gap-1 justify-center">
+                        <button type="button" onClick={handleSave} className="p-1.5 bg-[var(--green)] text-white hover:bg-opacity-90 rounded" title="Save"><Check size={12} /></button>
+                        <button type="button" onClick={() => setEditingId(null)} className="p-1.5 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded" title="Cancel"><X size={12} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-2 border-r border-gray-200 font-bold whitespace-nowrap">{rec.period}</td>
+                    
+                    <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.vlEarned || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.vlAbsUndWp || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-100 text-center font-bold text-[var(--navy)]">{rec.vlBalance || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-200 text-center font-bold text-red-500">{rec.vlAbsUndWop || '-'}</td>
+                    
+                    <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.slEarned || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.slAbsUndWp || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-100 text-center font-bold text-[var(--navy)]">{rec.slBalance || '-'}</td>
+                    <td className="px-2 py-2 border-r border-gray-200 text-center font-bold text-red-500">{rec.slAbsUndWop || '-'}</td>
+                    
+                    <td className="px-3 py-2 border-r border-gray-200 text-xs text-gray-600">{rec.dateAndAction || '-'}</td>
+                    
+                    <td className="px-3 py-2 text-center">
+                      {deletingId === rec.id ? (
+                        <div className="flex flex-col gap-1 items-center">
+                          <span className="text-[9px] text-red-600 font-bold uppercase">Confirm?</span>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => handleDelete(rec.id)} className="p-1 bg-red-600 text-white rounded hover:bg-red-700" title="Yes, delete"><Check size={12} /></button>
+                            <button type="button" onClick={() => setDeletingId(null)} className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300" title="Cancel"><X size={12} /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1 justify-center">
+                          <button type="button" onClick={() => handleEdit(rec)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit">
+                            <Edit2 size={14} />
+                          </button>
+                          <button type="button" onClick={() => setDeletingId(rec.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* MOBILE CARD VIEW */}
+      <div className="md:hidden space-y-3">
+        {records.length === 0 && (
+          <div className="text-center p-6 bg-gray-50 rounded-lg text-gray-500 text-sm border border-gray-200">
+            No leave records found.
+          </div>
+        )}
+        {records.map((rec, i) => (
+          <div key={rec.id} className={`bg-slate-50 border rounded-2xl p-4 shadow-sm relative ${editingId === rec.id ? 'border-blue-300 shadow-md bg-blue-50/30' : 'border-slate-200'}`}>
+            {editingId === rec.id ? (
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-bold text-sm text-[var(--navy)]">Edit Leave Record</span>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-lg">#{i + 1}</span>
+                </div>
+                {renderEditFormFields()}
+                {error && <div className="text-red-500 text-xs mt-2">{error}</div>}
+                <div className="flex justify-end gap-2 pt-4 mt-2 border-t border-slate-200">
+                  <button 
+                    type="button" 
+                    onClick={() => setEditingId(null)} 
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg text-xs hover:bg-gray-50 transition-all"
+                  >
+                    <X size={12} /> Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleSave} 
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[var(--green)] text-white font-bold rounded-lg text-xs hover:bg-opacity-90 transition-all"
+                  >
+                    <Check size={12} /> Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex justify-between items-start mb-3 border-b border-dashed border-slate-300 pb-3">
+                  <div>
+                    <div className="font-bold text-[var(--navy)] text-sm">{rec.period || 'Untitled Entry'}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{rec.dateAndAction || 'No Action Taken'}</div>
+                  </div>
+                  <span className="text-[10px] bg-slate-200 text-slate-600 font-bold font-mono px-2 py-0.5 rounded-lg shrink-0">#{i + 1}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 mb-4">
+                  <div className="bg-white p-2 rounded border border-blue-100">
+                    <span className="text-[9px] font-black uppercase text-blue-500 block mb-1">Vacation Leave</span>
+                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                      <div>Earned: <span className="font-medium text-slate-800">{rec.vlEarned || '-'}</span></div>
+                      <div>W/P: <span className="font-medium text-slate-800">{rec.vlAbsUndWp || '-'}</span></div>
+                      <div>Bal: <span className="font-bold text-[var(--navy)]">{rec.vlBalance || '-'}</span></div>
+                      <div className="text-red-500">WOP: <span className="font-bold text-red-600">{rec.vlAbsUndWop || '-'}</span></div>
+                    </div>
+                  </div>
+                  <div className="bg-white p-2 rounded border border-emerald-100">
+                    <span className="text-[9px] font-black uppercase text-emerald-500 block mb-1">Sick Leave</span>
+                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                      <div>Earned: <span className="font-medium text-slate-800">{rec.slEarned || '-'}</span></div>
+                      <div>W/P: <span className="font-medium text-slate-800">{rec.slAbsUndWp || '-'}</span></div>
+                      <div>Bal: <span className="font-bold text-[var(--navy)]">{rec.slBalance || '-'}</span></div>
+                      <div className="text-red-500">WOP: <span className="font-bold text-red-600">{rec.slAbsUndWop || '-'}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {deletingId === rec.id ? (
+                  <div className="bg-red-50 p-2.5 rounded-xl border border-red-200 flex flex-col items-stretch gap-2 mt-2">
+                    <span className="text-red-800 text-xs font-semibold text-center">Are you sure you want to delete?</span>
+                    <div className="flex gap-2 justify-center">
+                      <button type="button" onClick={() => handleDelete(rec.id)} className="flex-1 py-1.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-red-700">Delete</button>
+                      <button type="button" onClick={() => setDeletingId(null)} className="flex-1 py-1.5 bg-gray-200 text-gray-800 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-gray-300">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-slate-200">
+                    <button type="button" onClick={() => handleEdit(rec)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:bg-blue-50 text-blue-600 rounded-lg text-xs font-bold transition-all shadow-sm">
+                      <Edit2 size={12} /> Edit
+                    </button>
+                    <button type="button" onClick={() => setDeletingId(rec.id)} className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 hover:bg-red-50 text-red-600 rounded-lg text-xs font-bold transition-all shadow-sm">
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+export default LeaveCardEditor;

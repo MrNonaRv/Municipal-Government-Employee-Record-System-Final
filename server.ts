@@ -630,6 +630,8 @@ app.get('/api/employees', async (req, res) => {
       education: record.education || [],
       serviceRecords: record.serviceRecords || [],
       attachments: record.attachments || [],
+      nosaRecords: record.nosaRecords || [],
+      leaveRecords: record.leaveRecords || [],
       pdsScan: record.pdsScan
     }));
 
@@ -713,6 +715,8 @@ app.post('/api/employees/chunk', async (req, res) => {
           education: employee.education || [],
           serviceRecords: employee.serviceRecords || [],
           attachments: employee.attachments || [],
+          nosaRecords: employee.nosaRecords || [],
+          leaveRecords: employee.leaveRecords || [],
           pdsScan: employee.pdsScan
         }).where(eq(employees.originalId, employee.id));
       } else {
@@ -758,6 +762,8 @@ app.post('/api/employees/chunk', async (req, res) => {
           education: employee.education || [],
           serviceRecords: employee.serviceRecords || [],
           attachments: employee.attachments || [],
+          nosaRecords: employee.nosaRecords || [],
+          leaveRecords: employee.leaveRecords || [],
           pdsScan: employee.pdsScan
         });
       }
@@ -826,6 +832,8 @@ app.post('/api/employees', async (req, res) => {
         education: employee.education || [],
         serviceRecords: employee.serviceRecords || [],
         attachments: employee.attachments || [],
+        nosaRecords: employee.nosaRecords || [],
+        leaveRecords: employee.leaveRecords || [],
         pdsScan: employee.pdsScan
       }).where(eq(employees.originalId, employee.id));
     } else {
@@ -871,6 +879,8 @@ app.post('/api/employees', async (req, res) => {
         education: employee.education || [],
         serviceRecords: employee.serviceRecords || [],
         attachments: employee.attachments || [],
+        nosaRecords: employee.nosaRecords || [],
+        leaveRecords: employee.leaveRecords || [],
         pdsScan: employee.pdsScan
       });
     }

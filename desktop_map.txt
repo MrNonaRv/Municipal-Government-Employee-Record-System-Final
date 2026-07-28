@@ -1,0 +1,81 @@
+            {records.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-3 py-8 text-center text-gray-500">No leave records found.</td>
+              </tr>
+            )}
+            {records.map(rec => (
+              <React.Fragment key={rec.id}>
+                {editingId === rec.id ? (
+                  editForm.isSeparator ? (
+                    <tr className="bg-gray-50 border-b-4 border-gray-300">
+                      <td colSpan={10} className="px-3 py-2 border-r border-gray-200 align-middle">
+                        <input type="text" value={editForm.period || ''} onChange={e => handleFieldChange('period', e.target.value)} className="w-full text-sm font-bold text-gray-600 uppercase tracking-widest p-2 border rounded bg-white text-center" placeholder="YEAR SEPARATOR TEXT" />
+                        {error && !editForm.period?.trim() && <div className="text-red-500 text-[9px] mt-0.5 leading-tight text-center">{error}</div>}
+                      </td>
+                      <td className="px-1 py-2 text-center align-middle">
+                        <div className="flex gap-1 justify-center">
+                          <button type="button" onClick={handleSave} className="p-1.5 bg-[var(--green)] text-white hover:bg-opacity-90 rounded" title="Save"><Check size={12} /></button>
+                          <button type="button" onClick={() => setEditingId(null)} className="p-1.5 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded" title="Cancel"><X size={12} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                  <tr className="bg-blue-50 border-b border-gray-200">
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.period || ''} onChange={e => handleFieldChange('period', e.target.value)} className="w-full text-xs p-1 border rounded bg-white" placeholder="Period" />
+                      {error && !editForm.period?.trim() && <div className="text-red-500 text-[9px] mt-0.5 leading-tight">{error}</div>}
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlEarned || ''} onChange={e => handleFieldChange('vlEarned', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlAbsUndWp || ''} onChange={e => handleFieldChange('vlAbsUndWp', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlBalance || ''} onChange={e => handleFieldChange('vlBalance', e.target.value)} className="w-full text-xs p-1 text-center font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.vlAbsUndWop || ''} onChange={e => handleFieldChange('vlAbsUndWop', e.target.value)} className="w-full text-xs p-1 text-center text-red-500 font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slEarned || ''} onChange={e => handleFieldChange('slEarned', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slAbsUndWp || ''} onChange={e => handleFieldChange('slAbsUndWp', e.target.value)} className="w-full text-xs p-1 text-center border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slBalance || ''} onChange={e => handleFieldChange('slBalance', e.target.value)} className="w-full text-xs p-1 text-center font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.slAbsUndWop || ''} onChange={e => handleFieldChange('slAbsUndWop', e.target.value)} className="w-full text-xs p-1 text-center text-red-500 font-bold border rounded bg-white" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-gray-200 align-top">
+                      <input type="text" value={editForm.dateAndAction || ''} onChange={e => handleFieldChange('dateAndAction', e.target.value)} className="w-full text-xs p-1 border rounded bg-white" placeholder="Action" />
+                    </td>
+                    <td className="px-1 py-1 text-center align-top">
+                      <div className="flex gap-1 justify-center">
+                        <button type="button" onClick={handleSave} className="p-1.5 bg-[var(--green)] text-white hover:bg-opacity-90 rounded" title="Save"><Check size={12} /></button>
+                        <button type="button" onClick={() => setEditingId(null)} className="p-1.5 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded" title="Cancel"><X size={12} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : rec.isSeparator ? (
+                  <tr className="border-b-4 border-gray-300 bg-gray-100">
+                    <td colSpan={11} className="p-0 relative group">
+                      {deletingId === rec.id ? (
+                        <div className="flex items-center justify-center gap-4 py-3 bg-red-50">
+                          <span className="text-red-600 text-sm font-bold">Delete Separator?</span>
+                          <button type="button" onClick={() => handleDelete(rec.id)} className="px-3 py-1 bg-red-600 text-white rounded text-xs">Confirm</button>
+                          <button type="button" onClick={() => setDeletingId(null)} className="px-3 py-1 bg-gray-200 text-gray-800 rounded text-xs">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-3">
+                          <span className="font-bold text-gray-500 uppercase tracking-widest">{rec.period || '--- YEAR SEPARATOR ---'}</span>
+                          <div className="absolute right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                            <button type="button" onClick={() => handleEdit(rec)} className="p-1 text-blue-600 hover:bg-blue-100 rounded" title="Edit Separator">
+                              <Edit2 size={14} />
+                            </button>
+                            <button type="button" onClick={() => setDeletingId(rec.id)} className="p-1 text-red-600 hover:bg-red-100 rounded" title="Delete Separator">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Employee, Child, Education, Attachment } from '../types/employee';
 import ServiceRecordEditor from './ServiceRecordEditor';
+import LeaveCardEditor from './LeaveCardEditor';
 import { fileToBase64 } from '../utils/helpers';
 import { convertImageToPDF } from '../utils/pdfHelpers';
-import { Camera, Plus, Trash2, X, User, Users, GraduationCap, Briefcase, Save, ArrowLeft, FileText, FileUp, Download, Cloud, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar, Camera, Plus, Trash2, X, User, Users, GraduationCap, Briefcase, Save, ArrowLeft, FileText, FileUp, Download, Cloud, Loader2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getDriveAccessToken, uploadFileToDrive, downloadFileFromDrive, deleteFileFromDrive } from '../services/driveStorage';
 import { isOnline } from '../services/db';
@@ -27,14 +28,14 @@ interface Props {
   allEmployees?: Employee[];
   onClose: () => void;
   onSave: (emp: Employee, isAutosave?: boolean) => void;
-  initialTab?: 'personal' | 'family' | 'education' | 'service' | 'attachments';
+  initialTab?: 'personal' | 'family' | 'education' | 'service' | 'attachments' | 'leaves';
   isSaving?: boolean;
 }
 
 export default function EditModal({ employee, allEmployees = [], onClose, onSave, initialTab = 'service', isSaving = false }: Props) {
   const [formData, setFormData] = useState<Employee>({ ...employee });
-  const [activeTab, setActiveTab] = useState<'service' | 'attachments'>(
-    initialTab === 'attachments' ? 'attachments' : 'service'
+  const [activeTab, setActiveTab] = useState<'service' | 'attachments' | 'leaves'>(
+    initialTab === 'attachments' ? 'attachments' : initialTab === 'leaves' ? 'leaves' : 'service'
   );
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -292,7 +293,11 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    let finalValue = value;
+    if (['surname', 'firstName', 'middleName', 'nameExtension'].includes(name)) {
+      finalValue = value.toUpperCase();
+    }
+    setFormData({ ...formData, [name]: finalValue });
     validateField(name, value);
     setError(null);
   };
@@ -319,9 +324,10 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
 
 
 
-  const tabs: { id: 'service' | 'attachments', label: string, icon: any }[] = [
+  const tabs: { id: 'service' | 'attachments' | 'leaves', label: string, icon: any }[] = [
     { id: 'service', label: 'Service Record', icon: Briefcase },
-    { id: 'attachments', label: 'Scanned Documents', icon: FileText }
+    { id: 'attachments', label: 'Scanned Documents', icon: FileText },
+    { id: 'leaves', label: 'Leave Card', icon: Calendar }
   ];
 
   return (
@@ -396,7 +402,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 value={formData.surname || ''} 
                 onChange={handleChange} 
                 aria-invalid={!!validationErrors.surname}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all ${validationErrors.surname ? 'border-red-500 bg-red-50/10 font-bold' : 'border-slate-200 bg-white'}`} 
+                className={`w-full border rounded-lg px-3 py-1.5 text-xs uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all ${validationErrors.surname ? 'border-red-500 bg-red-50/10 font-bold' : 'border-slate-200 bg-white'}`} 
               />
               {validationErrors.surname && <p className="text-[9px] text-red-500 font-bold uppercase tracking-tight">{validationErrors.surname}</p>}
             </div>
@@ -409,7 +415,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 value={formData.firstName || ''} 
                 onChange={handleChange} 
                 aria-invalid={!!validationErrors.firstName}
-                className={`w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all ${validationErrors.firstName ? 'border-red-500 bg-red-50/10 font-bold' : 'border-slate-200 bg-white'}`} 
+                className={`w-full border rounded-lg px-3 py-1.5 text-xs uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all ${validationErrors.firstName ? 'border-red-500 bg-red-50/10 font-bold' : 'border-slate-200 bg-white'}`} 
               />
               {validationErrors.firstName && <p className="text-[9px] text-red-500 font-bold uppercase tracking-tight">{validationErrors.firstName}</p>}
             </div>
@@ -420,7 +426,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 name="middleName" 
                 value={formData.middleName || ''} 
                 onChange={handleChange} 
-                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
+                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
               />
             </div>
             <div className="space-y-1">
@@ -429,7 +435,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 name="nameExtension" 
                 value={formData.nameExtension || ''} 
                 onChange={handleChange} 
-                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
+                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
               />
             </div>
           </div>
@@ -456,7 +462,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 bg-white custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-white custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -477,6 +483,18 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 />
               )}
 
+              {activeTab === 'leaves' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 mb-24">
+                  <h2 className="font-playfair text-xl font-bold text-[var(--navy)] mb-4 uppercase tracking-tight">Leave Card</h2>
+                  <LeaveCardEditor 
+                    records={formData.leaveRecords || []}
+                    onChange={(records) => {
+                      setFormData({ ...formData, leaveRecords: records });
+                      
+                    }}
+                  />
+                </div>
+              )}
               {activeTab === 'attachments' && (
                 <div className="space-y-6">
                   <div className="flex flex-col gap-6">
@@ -561,17 +579,17 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {(formData.attachments || []).map((doc) => (
-                        <div key={doc.id} className="border border-slate-100 rounded-xl p-4 bg-white shadow-sm flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-32 h-32 rounded-lg bg-slate-50 flex items-center justify-center text-indigo-500 overflow-hidden shrink-0 border border-slate-200">
+                        <div key={doc.id} className="border border-slate-100 rounded-xl p-4 bg-white shadow-sm flex flex-col sm:flex-row items-center sm:justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-slate-50 flex items-center justify-center text-indigo-500 overflow-hidden shrink-0 border border-slate-200">
                               {doc.fileData && doc.fileType.startsWith('image/') ? (
                                 <img src={doc.fileData} alt={doc.name} className="w-full h-full object-cover" />
                               ) : doc.fileData && doc.fileType === 'application/pdf' ? (
-                                <FileText size={48} className="text-indigo-400" />
+                                <FileText size={32} className="text-indigo-400" />
                               ) : doc.driveFileId ? (
-                                <Cloud size={32} className="text-indigo-600" />
+                                <Cloud size={24} className="text-indigo-600" />
                               ) : (
-                                <FileText size={32} className="text-indigo-500" />
+                                <FileText size={24} className="text-indigo-500" />
                               )}
                             </div>
                             <div className="min-w-0">
@@ -588,7 +606,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end sm:justify-start border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
                             {doc.driveFileId ? (
                               <button
                                 type="button"
@@ -650,7 +668,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
           </AnimatePresence>
         </div>
 
-        <div className="p-6 border-t border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-red-600 text-xs font-bold uppercase tracking-widest">
               {error && <><X size={14} /> {error}</>}

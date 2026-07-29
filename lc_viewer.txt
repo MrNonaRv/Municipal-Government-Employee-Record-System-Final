@@ -1,9 +1,6 @@
-const fs = require('fs');
-const code = fs.readFileSync('src/components/LeaveCardViewer.tsx', 'utf8');
-
-const newCode = `import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Employee, LeaveRecord } from '../types/employee';
-import { Printer } from 'lucide-react';
+import { Printer, Plus } from 'lucide-react';
 import LeaveCardPrintModal from './LeaveCardPrintModal';
 
 interface Props {
@@ -32,6 +29,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
   const dailyRate = latestSalary / 22;
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [extraYears, setExtraYears] = useState<number[]>([]);
+  const [addYearInput, setAddYearInput] = useState('');
 
   const calculateDeduction = (wopStr: string) => {
     const wop = parseFloat(wopStr) || 0;
@@ -77,23 +76,18 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     });
   };
 
-  const saveEdit = () => {
-    if (!editingCell || !onSave) {
-      setEditingCell(null);
-      return;
-    }
-    
+  const displayRecords = useMemo(() => {
     let newRecords = [...records];
+    if (!editingCell) return newRecords;
+
     const { id, field, value, year, month } = editingCell;
 
     if (id.startsWith('new-')) {
-      if (!value.trim()) {
-         setEditingCell(null);
-         return;
-      }
+      if (!value.trim()) return newRecords;
+      
       const newRec: LeaveRecord = {
-        id: 'lc-' + Date.now().toString(36),
-        period: \`\${year} \${month}\`,
+        id: 'lc-' + id,
+        period: `${year} ${month}`,
         vlEarned: field === 'vlEarned' ? value : '1.25',
         vlAbsUndWp: field === 'vlAbsUndWp' ? value : '',
         vlBalance: field === 'vlBalance' ? value : '',
@@ -107,12 +101,11 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       
       newRecords.push(newRec);
       
-      // Sort chronologically
       newRecords.sort((a, b) => {
         if (a.isSeparator) return -1;
         if (b.isSeparator) return 1;
-        const aYear = parseInt(a.period?.match(/\\b(20\\d{2})\\b/)?.[1] || '0');
-        const bYear = parseInt(b.period?.match(/\\b(20\\d{2})\\b/)?.[1] || '0');
+        const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+        const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
         if (aYear !== bYear) return aYear - bYear;
         
         const getMonthIndex = (period: string) => {
@@ -125,12 +118,6 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       });
       
     } else {
-      const existing = newRecords.find(r => r.id === id);
-      if (existing && existing[field] === value) {
-        setEditingCell(null);
-        return;
-      }
-      
       newRecords = newRecords.map(r => {
         if (r.id === id) {
           const updated = { ...r, [field]: value };
@@ -144,8 +131,37 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       });
     }
 
-    newRecords = recalculateBalances(newRecords, id.startsWith('new-') ? undefined : id);
-    onSave({ ...employee, leaveRecords: newRecords });
+    const isBalanceEdit = field === 'vlBalance' || field === 'slBalance';
+    newRecords = recalculateBalances(newRecords, id.startsWith('new-') ? undefined : (isBalanceEdit ? id : undefined));
+    return newRecords;
+  }, [records, editingCell]);
+
+  const saveEdit = () => {
+    if (!editingCell || !onSave) {
+      setEditingCell(null);
+      return;
+    }
+
+    const { id, field, value } = editingCell;
+
+    if (id.startsWith('new-') && !value.trim()) {
+      setEditingCell(null);
+      return;
+    }
+
+    if (!id.startsWith('new-')) {
+       const existing = records.find(r => r.id === id);
+       if (existing && existing[field] === value) {
+         setEditingCell(null);
+         return;
+       }
+    }
+
+    const finalRecords = displayRecords.map(r => 
+      r.id === `lc-${id}` ? { ...r, id: 'lc-' + Date.now().toString(36) } : r
+    );
+
+    onSave({ ...employee, leaveRecords: finalRecords });
     setEditingCell(null);
   };
 
@@ -159,7 +175,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     className: string, 
     align: 'left' | 'center' | 'right' = 'center'
   ) => {
-    const id = rec ? rec.id : \`new-\${year}-\${monthMatch}\`;
+    const id = rec ? rec.id : `new-${year}-${monthMatch}`;
     const isEditing = editingCell?.id === id && editingCell?.field === field;
 
     const handleDoubleClick = () => {
@@ -187,7 +203,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           <input 
             autoFocus
             type="text"
-            className={\`w-full text-\${align} border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1\`}
+            className={`w-full text-${align} border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1`}
             value={editingCell.value}
             onChange={e => setEditingCell({ ...editingCell, value: e.target.value })}
             onBlur={saveEdit}
@@ -199,7 +215,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
     return (
       <td 
-        className={\`\${className} \${onSave ? 'cursor-pointer hover:bg-blue-50/30' : ''}\`} 
+        className={`${className} ${onSave ? 'cursor-pointer hover:bg-blue-50/30' : ''}`} 
         onDoubleClick={handleDoubleClick}
         title={onSave ? "Double-click to edit" : undefined}
       >
@@ -209,7 +225,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
   };
 
   const yearsInRecords = records.map(r => {
-    const m = r.period?.match(/\\b(20\\d{2})\\b/);
+    const m = r.period?.match(/\b(20\d{2})\b/);
     return m ? parseInt(m[1]) : null;
   }).filter(y => y !== null) as number[];
   
@@ -225,6 +241,10 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
   for (let y = startYear; y <= Math.max(startYear, currentYear); y++) {
     targetYears.push(y);
   }
+  extraYears.forEach(y => {
+    if (!targetYears.includes(y)) targetYears.push(y);
+  });
+  targetYears.sort((a, b) => a - b);
 
   const stdMonths = [
     { label: 'Jan.', match: 'jan' },
@@ -250,6 +270,29 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           {onSave && <p className="text-blue-500 font-bold tracking-tight text-xs mt-2 italic">Double-click any cell to edit</p>}
         </div>
         <div className="flex gap-4 items-end">
+          {onSave && (
+            <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden h-[52px]">
+              <input
+                type="number"
+                value={addYearInput}
+                onChange={(e) => setAddYearInput(e.target.value)}
+                className="w-16 px-2 py-2 text-sm text-center focus:outline-none h-full"
+                placeholder="YYYY"
+              />
+              <button
+                onClick={() => {
+                  const y = parseInt(addYearInput);
+                  if (y && !targetYears.includes(y)) {
+                     setExtraYears([...extraYears, y]);
+                     setAddYearInput('');
+                  }
+                }}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-100 text-slate-700 text-[10px] uppercase font-bold tracking-widest hover:bg-slate-200 transition-colors h-full border-l border-slate-300"
+              >
+                <Plus size={14} /> Add Year
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setIsPrintOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white font-bold uppercase tracking-widest text-[10px] rounded-lg hover:bg-slate-700 transition-colors h-[52px]"
@@ -291,12 +334,12 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             </thead>
             <tbody>
               {targetYears.map((year) => {
-                const yearRecords = records.filter(r => r.period?.includes(year.toString()));
+                const yearRecords = displayRecords.filter(r => r.period?.includes(year.toString()));
                 const matchedIds = new Set<string>();
                 const rows = [];
 
                 rows.push(
-                  <tr key={\`year-\${year}\`} className="border-b-4 border-slate-300 bg-slate-100">
+                  <tr key={`year-${year}`} className="border-b-4 border-slate-300 bg-slate-100">
                     <td colSpan={11} className="px-4 py-3 text-center font-bold text-slate-500 uppercase tracking-widest">
                       {year}
                     </td>
@@ -312,10 +355,10 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                   if (matched.length > 0 && !isFuture) {
                     matched.forEach(rec => {
                       let displayPeriod = rec.period || '';
-                      if (displayPeriod.toLowerCase() === \`\${year} \${month.match}\` || displayPeriod.toLowerCase() === \`\${year} \${month.label.toLowerCase()}\`) {
+                      if (displayPeriod.toLowerCase() === `${year} ${month.match}` || displayPeriod.toLowerCase() === `${year} ${month.label.toLowerCase()}`) {
                         displayPeriod = month.label;
                       } else {
-                        displayPeriod = displayPeriod.replace(new RegExp(\`\\\\b\${year}\\\\b\`, 'g'), '').trim();
+                        displayPeriod = displayPeriod.replace(new RegExp(`\\b${year}\\b`, 'g'), '').trim();
                         if (!displayPeriod) displayPeriod = month.label;
                       }
                       
@@ -337,14 +380,14 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                           {renderEditableCell(rec, year, month.match, month.label, 'dateAndAction', rec.dateAndAction, "px-4 py-3 border-r border-slate-200 text-xs text-slate-600", "left")}
                           
                           <td className="px-4 py-3 text-right font-mono font-bold text-red-600 bg-red-50/10">
-                            {totalDeduction > 0 ? \`-₱\${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\` : '-'}
+                            {totalDeduction > 0 ? `-₱${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                           </td>
                         </tr>
                       );
                     });
                   } else {
                     rows.push(
-                      <tr key={\`empty-\${year}-\${month.match}\`} className="border-b border-slate-100 opacity-50 hover:opacity-100 hover:bg-slate-50/50 transition-all">
+                      <tr key={`empty-${year}-${month.match}`} className="border-b border-slate-100 opacity-50 hover:opacity-100 hover:bg-slate-50/50 transition-all">
                         <td className="px-4 py-3 border-r border-slate-200 font-medium whitespace-nowrap text-slate-400">{month.label}</td>
                         {renderEditableCell(null, year, month.match, month.label, 'vlEarned', '', "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlAbsUndWp', '', "px-2 py-3 border-r border-slate-100 text-center")}
@@ -372,7 +415,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                     const totalDeduction = calculateDeduction(rec.vlAbsUndWop) + calculateDeduction(rec.slAbsUndWop);
                     rows.push(
                       <tr key={rec.id} className="border-b border-slate-100 bg-blue-50/20 hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap">{rec.period?.replace(new RegExp(\`\\\\b\${year}\\\\b\`, 'g'), '').trim()}</td>
+                        <td className="px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap">{rec.period?.replace(new RegExp(`\\b${year}\\b`, 'g'), '').trim()}</td>
                         {renderEditableCell(rec, year, '', '', 'vlEarned', rec.vlEarned, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(rec, year, '', '', 'vlAbsUndWp', rec.vlAbsUndWp, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(rec, year, '', '', 'vlBalance', rec.vlBalance, "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}
@@ -386,7 +429,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                         {renderEditableCell(rec, year, '', '', 'dateAndAction', rec.dateAndAction, "px-4 py-3 border-r border-slate-200 text-xs text-slate-600", "left")}
                         
                         <td className="px-4 py-3 text-right font-mono font-bold text-red-600 bg-red-50/10">
-                          {totalDeduction > 0 ? \`-₱\${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\` : '-'}
+                          {totalDeduction > 0 ? `-₱${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                         </td>
                       </tr>
                     );
@@ -411,13 +454,13 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                       {renderEditableCell(forceLeaveRec, year, 'force leave', 'force leave', 'dateAndAction', forceLeaveRec.dateAndAction, "px-4 py-3 border-r border-slate-200 text-xs text-slate-600", "left")}
                       
                       <td className="px-4 py-3 text-right font-mono font-bold text-red-600 bg-red-50/10">
-                        {totalDeduction > 0 ? \`-₱\${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\` : '-'}
+                        {totalDeduction > 0 ? `-₱${totalDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                       </td>
                     </tr>
                   );
                 } else {
                   rows.push(
-                    <tr key={\`force-\${year}\`} className="border-b border-slate-100 opacity-50 hover:opacity-100 transition-all bg-slate-50">
+                    <tr key={`force-${year}`} className="border-b border-slate-100 opacity-50 hover:opacity-100 transition-all bg-slate-50">
                       <td className="px-4 py-3 border-r border-slate-200 font-medium whitespace-nowrap text-xs leading-tight text-slate-500">Deduct force leave if<br/>{year} not taken</td>
                       {renderEditableCell(null, year, 'force leave', 'force leave', 'vlEarned', '', "px-2 py-3 border-r border-slate-100 text-center")}
                       {renderEditableCell(null, year, 'force leave', 'force leave', 'vlAbsUndWp', '', "px-2 py-3 border-r border-slate-100 text-center")}
@@ -445,6 +488,3 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     </div>
   );
 }
-`
-fs.writeFileSync('src/components/LeaveCardViewer.tsx', newCode);
-console.log('patched viewer for edit');

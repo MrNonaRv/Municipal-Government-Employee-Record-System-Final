@@ -11,11 +11,11 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
   const records = employee.leaveRecords || [];
   
   const firstDayOfService = employee.serviceRecords && employee.serviceRecords.length > 0 
-    ? employee.serviceRecords[0].serviceFrom 
+    ? employee.serviceRecords[0].from 
     : '';
 
   const office = employee.serviceRecords && employee.serviceRecords.length > 0 
-    ? employee.serviceRecords[employee.serviceRecords.length - 1].department 
+    ? employee.serviceRecords[employee.serviceRecords.length - 1].station 
     : '';
 
   const handlePrint = () => {
@@ -40,7 +40,12 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
     targetYears.push(y);
   }
 
-  const stdMonths = [
+  
+  const yearChunks = [];
+  for (let i = 0; i < targetYears.length; i += 3) {
+    yearChunks.push(targetYears.slice(i, i + 3));
+  }
+const stdMonths = [
     { label: 'Jan.', match: 'jan' },
     { label: 'Feb.', match: 'feb' },
     { label: 'Mar.', match: 'mar' },
@@ -77,7 +82,9 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
           </div>
         </div>
 
-        <div className="p-8 print:p-0 bg-white print:w-full flex-1">
+        <div className="p-8 print:p-0 bg-white print:w-full flex-1 h-full overflow-y-auto">
+          {yearChunks.map((chunk, chunkIndex) => (
+            <div key={chunkIndex} className={chunkIndex < yearChunks.length - 1 ? 'break-after-page mb-16 print:mb-0' : ''}>
           <div className="text-center mb-6 leading-tight">
             <p className="text-sm">Republic of the Philippines</p>
             <p className="text-sm">Province of Capiz</p>
@@ -111,7 +118,8 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
           <table className="w-full border-collapse border border-black text-xs print:text-[11px]">
             <thead>
               <tr>
-                <th rowSpan={2} className="border border-black p-1 text-center font-normal align-middle w-32">Period/Particulars</th>
+                <th rowSpan={2} className="border border-black p-1 text-center font-normal align-middle w-16">Period</th>
+                <th rowSpan={2} className="border border-black p-1 text-center font-normal align-middle w-24">Particulars</th>
                 <th colSpan={4} className="border border-black p-1 text-center font-bold">VACATION LEAVE</th>
                 <th colSpan={4} className="border border-black p-1 text-center font-bold">SICK LEAVE</th>
                 <th rowSpan={2} className="border border-black p-1 text-center font-normal align-middle w-24 leading-tight">Date and Action<br/>Taken on<br/>Application<br/>for Leave</th>
@@ -136,7 +144,7 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
 
                 rows.push(
                   <tr key={`year-${year}`}>
-                    <td colSpan={10} className="border border-black px-1 text-left">
+                    <td colSpan={11} className="border border-black px-1 text-left">
                       <span className="border-b border-black pr-8">{`${year}`}</span>
                     </td>
                   </tr>
@@ -161,6 +169,7 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
                       rows.push(
                         <tr key={rec.id}>
                           <td className="border border-black px-1 text-left whitespace-pre-wrap leading-tight">{displayPeriod}</td>
+                          <td className="border border-black px-1 text-left whitespace-pre-wrap leading-tight">{rec.particulars}</td>
                           <td className="border border-black px-1 text-center">{rec.vlEarned}</td>
                           <td className="border border-black px-1 text-center">{rec.vlAbsUndWp}</td>
                           <td className="border border-black px-1 text-center">{rec.vlBalance}</td>
@@ -177,6 +186,7 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
                     rows.push(
                       <tr key={`empty-${year}-${month.match}`}>
                         <td className="border border-black px-1 text-left leading-tight">{month.label}</td>
+                        <td className="border border-black px-1 text-left"></td>
                         <td className="border border-black px-1 text-center"></td>
                         <td className="border border-black px-1 text-center"></td>
                         <td className="border border-black px-1 text-center"></td>
@@ -199,6 +209,7 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
                     rows.push(
                       <tr key={rec.id}>
                         <td className="border border-black px-1 text-left whitespace-pre-wrap leading-tight">{rec.period?.replace(new RegExp(`\\b${year}\\b`, 'g'), '').trim()}</td>
+                        <td className="border border-black px-1 text-left whitespace-pre-wrap leading-tight">{rec.particulars}</td>
                         <td className="border border-black px-1 text-center">{rec.vlEarned}</td>
                         <td className="border border-black px-1 text-center">{rec.vlAbsUndWp}</td>
                         <td className="border border-black px-1 text-center">{rec.vlBalance}</td>
@@ -232,6 +243,7 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
                   rows.push(
                     <tr key={`force-${year}`}>
                       <td className="border border-black px-1 text-left leading-tight">Deduct force leave if<br/>{year} not taken</td>
+                      <td className="border border-black px-1 text-left"></td>
                       <td className="border border-black px-1 text-center"></td>
                       <td className="border border-black px-1 text-center"></td>
                       <td className="border border-black px-1 text-center"></td>
@@ -250,8 +262,8 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
             </tbody>
           </table>
 
-          <div className="mt-8">
-            <h3 className="text-center font-bold text-sm mb-4">PERFORMANCE RATING</h3>
+          <div className="mt-8 print:mt-4">
+            <h3 className="text-center font-bold text-sm mb-4 print:mb-2">PERFORMANCE RATING</h3>
             <div className="flex justify-center gap-16 mb-8 text-sm">
               <div className="flex flex-col gap-1">
                 <div>O - Outstanding</div>
@@ -285,6 +297,8 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
             </div>
           </div>
 
+          </div>
+          ))}
           <style>{`
             @media print {
               @page { size: portrait; margin: 15mm; }

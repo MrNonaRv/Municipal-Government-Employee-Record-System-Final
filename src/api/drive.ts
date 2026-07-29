@@ -13,7 +13,6 @@ export async function loadGDriveConfig(firestoreDb: any, currentDirname: string)
     try {
       const content = await fs.readFile(GDRIVE_CONFIG_FILE, 'utf-8');
       sharedDriveConfig = JSON.parse(content);
-      console.log('[Google Drive Config] Loaded local configuration:', sharedDriveConfig?.user?.email);
     } catch (e) {}
 
     if (false && firestoreDb) {
@@ -26,10 +25,8 @@ export async function loadGDriveConfig(firestoreDb: any, currentDirname: string)
           user: data.user || null,
           storageProvider: data.storageProvider || null
         };
-        console.log('[Google Drive Config] Restored configuration from Firestore:', sharedDriveConfig?.user?.email);
         await fs.writeFile(GDRIVE_CONFIG_FILE, JSON.stringify(sharedDriveConfig, null, 2), 'utf-8');
       } else if (sharedDriveConfig) {
-        console.log('[Google Drive Config] Seeding Firestore with local configuration...');
         await setDoc(docRef, sharedDriveConfig);
       }
     }
@@ -47,7 +44,6 @@ export async function saveGDriveConfig(firestoreDb: any, currentDirname: string,
       const docRef = doc(firestoreDb, 'system_sync', 'google_drive_config');
       await setDoc(docRef, config);
     }
-    console.log('[Google Drive Config] Saved shared configuration:', config?.user?.email);
   } catch (err) {
     console.error('[Google Drive Config] Failed to save Google Drive config:', err);
   }
@@ -64,7 +60,6 @@ export async function deleteGDriveConfig(firestoreDb: any, currentDirname: strin
       const docRef = doc(firestoreDb, 'system_sync', 'google_drive_config');
       await deleteDoc(docRef);
     }
-    console.log('[Google Drive Config] Deleted shared configuration');
   } catch (err) {
     console.error('[Google Drive Config] Failed to delete Google Drive config:', err);
   }

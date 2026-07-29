@@ -193,7 +193,6 @@ export default function App() {
       if (pending > 0 && getWorkMode() !== 'local') {
         const reachable = await checkServerConnection();
         if (reachable) {
-          console.log(`[App] Startup detected ${pending} pending items. Triggering sync...`);
           triggerSync();
         }
       }
@@ -346,7 +345,6 @@ export default function App() {
             triggerSync();
           } else if (nowReachable && pendingItems > 0 && !syncing) {
             // Proactively trigger sync if reachable and items are pending but no sync is active
-            console.log('[checkServerInterval] Reachable with pending items. Triggering proactive sync.');
             triggerSync();
           }
         }
@@ -392,7 +390,6 @@ export default function App() {
       const reachable = getServerReachable();
       
       if (mode !== 'local' && reachable && (forceServerRefresh || employees.length === 0)) {
-        console.log('[loadEmployees] Proactively refreshing data from government server...');
       }
 
       const data = await dbGetAll();

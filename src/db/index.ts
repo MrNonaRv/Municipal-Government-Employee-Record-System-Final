@@ -55,7 +55,6 @@ async function checkConnection() {
   
   try {
     const client = await pool.connect();
-    console.log('[DB] Successfully connected to PostgreSQL database.');
     client.release();
     connectionChecked = true;
   } catch (err: any) {
@@ -66,7 +65,6 @@ async function checkConnection() {
 }
 
 if (useFallbackMode) {
-  console.log('[DB] No SQL_HOST environment variable set. Using local JSON database (local_db.json) fallback.');
 }
 
 const IS_VERCEL = !!process.env.VERCEL;

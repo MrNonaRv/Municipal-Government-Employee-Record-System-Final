@@ -18,7 +18,7 @@ export default defineConfig(({mode}) => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    build: {
+    build: { chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks: {

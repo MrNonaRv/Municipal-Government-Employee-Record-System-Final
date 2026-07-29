@@ -181,15 +181,25 @@ const LeaveCardEditor = memo(function LeaveCardEditor({ records, onChange }: Pro
     }
     return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Period / Particulars</label>
+          <label className="block text-xs text-gray-500 mb-1">Period</label>
           <input 
             type="text" 
             value={editForm.period || ''} 
             onChange={e => handleFieldChange('period', e.target.value)} 
             className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm bg-white" 
             placeholder="e.g. 2024 Jan"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Particulars / Dates</label>
+          <input 
+            type="text" 
+            value={editForm.particulars || ''} 
+            onChange={e => handleFieldChange('particulars', e.target.value)} 
+            className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm bg-white" 
+            placeholder="e.g. SL: 1,2,3 VL: 4,5,6"
           />
         </div>
         <div>
@@ -353,7 +363,8 @@ const LeaveCardEditor = memo(function LeaveCardEditor({ records, onChange }: Pro
                 {editingId === rec.id ? (
                   <tr className="bg-blue-50 border-b border-gray-200">
                     <td className="px-1 py-1 border-r border-gray-200 align-top">
-                      <input type="text" value={editForm.period || ''} onChange={e => handleFieldChange('period', e.target.value)} className="w-full text-xs p-1 border rounded bg-white" placeholder="Period" />
+                      <input type="text" value={editForm.period || ''} onChange={e => handleFieldChange('period', e.target.value)} className="w-full text-xs p-1 border rounded bg-white mb-1" placeholder="Period" />
+                      <input type="text" value={editForm.particulars || ''} onChange={e => handleFieldChange('particulars', e.target.value)} className="w-full text-[10px] p-1 border rounded bg-white text-gray-600" placeholder="e.g. SL: 1,2,3 VL: 4,5,6" />
                       {error && !editForm.period?.trim() && <div className="text-red-500 text-[9px] mt-0.5 leading-tight">{error}</div>}
                     </td>
                     <td className="px-1 py-1 border-r border-gray-200 align-top">
@@ -392,7 +403,10 @@ const LeaveCardEditor = memo(function LeaveCardEditor({ records, onChange }: Pro
                   </tr>
                 ) : (
                   <tr className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                    <td className="px-3 py-2 border-r border-gray-200 font-bold whitespace-nowrap">{rec.period}</td>
+                    <td className="px-3 py-2 border-r border-gray-200 whitespace-nowrap">
+                      <div className="font-bold">{rec.period}</div>
+                      {rec.particulars && <div className="text-[10px] text-gray-500 font-normal">{rec.particulars}</div>}
+                    </td>
                     
                     <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.vlEarned || '-'}</td>
                     <td className="px-2 py-2 border-r border-gray-100 text-center">{rec.vlAbsUndWp || '-'}</td>
@@ -473,6 +487,7 @@ const LeaveCardEditor = memo(function LeaveCardEditor({ records, onChange }: Pro
                 <div className="flex justify-between items-start mb-3 border-b border-dashed border-slate-300 pb-3">
                   <div>
                     <div className="font-bold text-[var(--navy)] text-sm">{rec.period || 'Untitled Entry'}</div>
+                    {rec.particulars && <div className="text-xs text-gray-500 font-medium italic mt-0.5">{rec.particulars}</div>}
                     <div className="text-xs text-slate-500 mt-0.5">{rec.dateAndAction || 'No Action Taken'}</div>
                   </div>
                   <span className="text-[10px] bg-slate-200 text-slate-600 font-bold font-mono px-2 py-0.5 rounded-lg shrink-0">#{i + 1}</span>

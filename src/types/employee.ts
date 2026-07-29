@@ -2,6 +2,7 @@
 export interface LeaveRecord {
   id: string;
   period: string;
+  particulars?: string;
   vlEarned: string;
   vlAbsUndWp: string;
   vlBalance: string;

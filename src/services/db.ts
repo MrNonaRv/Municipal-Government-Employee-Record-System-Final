@@ -128,7 +128,6 @@ export const saveParkedItems = async (items: SyncItem[]): Promise<void> => {
 };
 
 export const parkSyncItem = async (item: SyncItem): Promise<void> => {
-  console.log(`[parkSyncItem] Parking stuck item ID=${item.id}, Type=${item.type} due to repeated failures.`);
   const items = await getParkedItems();
   if (!items.some(i => i.id === item.id && i.timestamp === item.timestamp)) {
     items.push(item);
@@ -141,7 +140,6 @@ export const getLocalCache = async (): Promise<Employee[]> => {
   try {
     const raw = await get(CACHE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    console.log(`[getLocalCache] Loaded ${parsed.length} employees from idb.`);
     return parsed;
   } catch (e) {
     try {
@@ -161,7 +159,6 @@ export const getLocalCache = async (): Promise<Employee[]> => {
 // Helper to save local cache
 export const saveLocalCache = async (employees: Employee[]): Promise<void> => {
   try {
-    console.log(`[saveLocalCache] Saving ${employees.length} employees to idb.`);
     await set(CACHE_KEY, JSON.stringify(employees));
   } catch (e) {
     console.error('[saveLocalCache] Failed to save local employee cache', e);
@@ -192,7 +189,6 @@ export const getSyncQueue = async (): Promise<SyncItem[]> => {
 // Helper to save sync queue
 export const saveSyncQueue = async (queue: SyncItem[]): Promise<void> => {
   try {
-    console.log(`[saveSyncQueue] Saving sync queue with ${queue.length} items.`);
     await set(QUEUE_KEY, JSON.stringify(queue));
   } catch (e) {
     console.error('[saveSyncQueue] Failed to save sync queue', e);
@@ -201,16 +197,13 @@ export const saveSyncQueue = async (queue: SyncItem[]): Promise<void> => {
 
 // Add to sync queue (merging duplicates)
 export const addToSyncQueue = async (item: Omit<SyncItem, 'timestamp'>): Promise<void> => {
-  console.log(`[addToSyncQueue] Queueing item: ID=${item.id}, Type=${item.type}`);
   const queue = await getSyncQueue();
   const existingIdx = queue.findIndex(q => q.id === item.id);
   const newItem = { ...item, timestamp: Date.now() };
 
   if (existingIdx >= 0) {
-    console.log(`[addToSyncQueue] Found existing item for ID=${item.id} at index ${existingIdx}. Overwriting.`);
     queue[existingIdx] = newItem;
   } else {
-    console.log(`[addToSyncQueue] Adding new item for ID=${item.id} to queue.`);
     queue.push(newItem);
   }
   await saveSyncQueue(queue);
@@ -220,7 +213,6 @@ export const addToSyncQueue = async (item: Omit<SyncItem, 'timestamp'>): Promise
 };
 
 export const removeFromSyncQueue = async (id: string): Promise<void> => {
-  console.log(`[removeFromSyncQueue] Removing ID=${id} from sync queue.`);
   const queue = (await getSyncQueue()).filter(q => q.id !== id);
   await saveSyncQueue(queue);
   window.dispatchEvent(new CustomEvent('gers_sync_status_change'));
@@ -452,10 +444,8 @@ export const syncOfflineData = async (
   onProgress?: (status: 'syncing' | 'success' | 'error' | 'retrying', pendingCount: number, retryData?: { attempt: number, nextRetryDelay: number }) => void
 ): Promise<void> => {
   const mode = getWorkMode();
-  console.log(`[syncOfflineData] Starting sync. WorkMode: ${mode}, isSyncing: ${isSyncing}`);
   
   if (mode === 'local') {
-    console.log('[syncOfflineData] WorkMode is "local". Skipping sync processing.');
     if (onProgress) onProgress('success', (await getSyncQueue()).length);
     return;
   }
@@ -471,7 +461,6 @@ export const syncOfflineData = async (
 
   const queue = await getSyncQueue();
   if (queue.length === 0) {
-    console.log('[syncOfflineData] Sync queue is empty. Nothing to sync.');
     if (onProgress) onProgress('success', 0);
     return;
   }
@@ -490,7 +479,6 @@ export const syncOfflineData = async (
     const failedItems: SyncItem[] = [];
     let connectionDropped = false;
 
-    console.log(`[syncOfflineData] Processing ${sortedQueue.length} items in temporal order...`);
 
     for (const item of sortedQueue) {
       if (connectionDropped) {
@@ -499,17 +487,14 @@ export const syncOfflineData = async (
         continue;
       }
       
-      console.log(`[syncOfflineData] Syncing item ID=${item.id}, Type=${item.type}...`);
       try {
         if (item.type === 'PUT') {
           if (!item.data) throw new Error('No data provided for PUT operation');
-          console.log(`[syncOfflineData] Sending POST /api/employees for ID=${item.id}`);
           const payloadStr = JSON.stringify(item.data);
           let response;
-          if (payloadStr.length > 500000) { // If larger than 500KB, use chunking
-            console.log(`[syncOfflineData] Payload is ${payloadStr.length} bytes, using chunked upload`);
+          if (payloadStr.length > 250000) { // If larger than 500KB, use chunking
             const uploadId = item.id + '-' + Date.now();
-            const CHUNK_SIZE = 500000;
+            const CHUNK_SIZE = 250000;
             const totalChunks = Math.ceil(payloadStr.length / CHUNK_SIZE);
             
             for (let i = 0; i < totalChunks; i++) {
@@ -534,22 +519,18 @@ export const syncOfflineData = async (
               headers: { 'Content-Type': 'application/json' },
               body: payloadStr
             });
-            console.log(`[syncOfflineData] POST response status: ${response.status} ${response.statusText}`);
             if (!response.ok) {
               throw await handleResponseError(response, `Server returned error status`, 'POST');
             }
           }
         } else if (item.type === 'DELETE') {
-          console.log(`[syncOfflineData] Sending DELETE /api/employees/${item.id}`);
           const response = await fetch(`/api/employees/${item.id}`, {
             method: 'DELETE'
           });
-          console.log(`[syncOfflineData] DELETE response status: ${response.status} ${response.statusText}`);
           if (!response.ok) {
             throw await handleResponseError(response, `Server returned error status`, 'DELETE');
           }
         }
-        console.log(`[syncOfflineData] Successfully synced item ${item.id}`);
         addSyncHistoryEvent({
           type: 'SYNC_ITEM_SUCCESS',
           message: `Successfully synced item: ${item.type} for ${item.id}`,
@@ -603,7 +584,6 @@ export const syncOfflineData = async (
       }
     }
 
-    console.log(`[syncOfflineData] Finished processing. Remaining failed items: ${failedItems.length}`);
     await saveSyncQueue(failedItems);
     window.dispatchEvent(new CustomEvent('gers_sync_status_change'));
 
@@ -617,7 +597,6 @@ export const syncOfflineData = async (
       if (syncRetryCount < MAX_RETRY_COUNT) {
         syncRetryCount++;
         const delay = BASE_RETRY_DELAY * Math.pow(2, syncRetryCount - 1);
-        console.log(`[syncOfflineData] Scheduling retry ${syncRetryCount}/${MAX_RETRY_COUNT} in ${delay}ms`);
         
         if (onProgress) onProgress('retrying', failedItems.length, { attempt: syncRetryCount, nextRetryDelay: delay });
         
@@ -632,7 +611,6 @@ export const syncOfflineData = async (
       }
     } else {
       resetSyncRetry();
-      console.log('[syncOfflineData] All items synced successfully! Fetching latest employees list to refresh cache...');
       addSyncHistoryEvent({
         type: 'SYNC_SUCCESS',
         message: 'All items synchronized successfully.',
@@ -640,12 +618,10 @@ export const syncOfflineData = async (
       if (onProgress) onProgress('success', 0);
       try {
         const latestResponse = await fetch('/api/employees');
-        console.log(`[syncOfflineData] Refresh fetch status: ${latestResponse.status}`);
         if (latestResponse.ok) {
           const contentType = latestResponse.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const latestData = await latestResponse.json();
-            console.log(`[syncOfflineData] Successfully refreshed cache with ${latestData.length} records.`);
             await saveLocalCache(latestData);
             setServerReachable(true);
             window.dispatchEvent(new CustomEvent('gers_data_synced', { detail: latestData }));
@@ -678,7 +654,6 @@ export const isOnline = (): boolean => {
   } else {
     result = navigator.onLine && lastServerReachable;
   }
-  console.log(`[isOnline] Evaluated online status: ${result}. WorkMode: ${mode}, navigator.onLine: ${navigator.onLine}, lastServerReachable: ${lastServerReachable}`);
   return result;
 };
 
@@ -689,7 +664,6 @@ export const dbGetAll = async (): Promise<Employee[]> => {
   const online = isOnline();
   
   if (mode === 'local' || !online) {
-    console.log(`[dbGetAll] Mode: ${mode}, Online: ${online}. Returning local cache.`);
     return await getLocalCache();
   }
   
@@ -717,7 +691,6 @@ export const dbGetAll = async (): Promise<Employee[]> => {
 };
 
 export const dbPut = async (emp: Employee): Promise<void> => {
-  console.log(`[dbPut] Saving employee ID=${emp.id} (${emp.surname || ''}, ${emp.firstName || ''}).`);
   
   // Update local cache immediately
   const cache = await getLocalCache();
@@ -736,10 +709,8 @@ export const dbPut = async (emp: Employee): Promise<void> => {
   });
 
   if (idx >= 0) {
-    console.log(`[dbPut] Updating existing employee in local cache at index ${idx}.`);
     cache[idx] = emp;
   } else {
-    console.log('[dbPut] Adding new employee to local cache.');
     cache.push(emp);
   }
   await saveLocalCache(cache);
@@ -748,7 +719,6 @@ export const dbPut = async (emp: Employee): Promise<void> => {
   const online = navigator.onLine;
   
   if (mode === 'local') {
-    console.log('[dbPut] Mode is "local". Adding to sync queue.');
     await addToSyncQueue({ id: emp.id, type: 'PUT', data: emp });
     return;
   }
@@ -761,10 +731,9 @@ export const dbPut = async (emp: Employee): Promise<void> => {
   try {
     const payloadStr = JSON.stringify(emp);
     let response;
-    if (payloadStr.length > 500000) { // If larger than 500KB, use chunking
-      console.log(`[dbPut] Payload is ${payloadStr.length} bytes, using chunked upload`);
+    if (payloadStr.length > 250000) { // If larger than 500KB, use chunking
       const uploadId = emp.id + '-' + Date.now();
-      const CHUNK_SIZE = 500000;
+      const CHUNK_SIZE = 250000;
       const totalChunks = Math.ceil(payloadStr.length / CHUNK_SIZE);
       
       for (let i = 0; i < totalChunks; i++) {
@@ -784,7 +753,6 @@ export const dbPut = async (emp: Employee): Promise<void> => {
         }
       }
     } else {
-      console.log(`[dbPut] Sending POST /api/employees for ID=${emp.id}...`);
       response = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -792,18 +760,15 @@ export const dbPut = async (emp: Employee): Promise<void> => {
       });
     }
     
-    console.log(`[dbPut] Response status: ${response.status} ${response.statusText}`);
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
     setServerReachable(true);
     await removeFromSyncQueue(emp.id);
     if ((await getSyncQueue()).length > 0) {
-      console.log('[dbPut] Sync queue has pending items. Triggering syncOfflineData.');
       window.dispatchEvent(new CustomEvent('gers_trigger_sync'));
     }
   } catch (error: any) {
     console.warn(`[dbPut] Failed to save employee ${emp.id} to server. Saving offline to sync queue.`, error);
     if (mode === 'auto') {
-      console.log('[dbPut] Marking server unreachable due to save failure.');
       setServerReachable(false);
     }
     await addToSyncQueue({ id: emp.id, type: 'PUT', data: emp });
@@ -812,7 +777,6 @@ export const dbPut = async (emp: Employee): Promise<void> => {
 };
 
 export const dbDelete = async (id: string): Promise<void> => {
-  console.log(`[dbDelete] Deleting employee ID=${id}.`);
   
   const oldCache = await getLocalCache();
   const emp = oldCache.find(e => e.id === id);
@@ -829,14 +793,12 @@ export const dbDelete = async (id: string): Promise<void> => {
 
   // Update local cache immediately
   const cache = oldCache.filter(e => e.id !== id);
-  console.log(`[dbDelete] Removed from local cache. New cache count: ${cache.length}`);
   await saveLocalCache(cache);
 
   const mode = getWorkMode();
   const online = navigator.onLine;
   
   if (mode === 'local') {
-    console.log('[dbDelete] Mode is "local". Adding DELETE to sync queue.');
     await addToSyncQueue({ id, type: 'DELETE' });
     return;
   }
@@ -847,22 +809,18 @@ export const dbDelete = async (id: string): Promise<void> => {
   }
 
   try {
-    console.log(`[dbDelete] Sending DELETE /api/employees/${id}...`);
     const response = await fetch(`/api/employees/${id}`, {
       method: 'DELETE'
     });
-    console.log(`[dbDelete] Response status: ${response.status} ${response.statusText}`);
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
     setServerReachable(true);
     await removeFromSyncQueue(id);
     if ((await getSyncQueue()).length > 0) {
-      console.log('[dbDelete] Sync queue has pending items. Triggering syncOfflineData.');
       window.dispatchEvent(new CustomEvent('gers_trigger_sync'));
     }
   } catch (error: any) {
     console.warn(`[dbDelete] Failed to delete employee ${id} on server. Queueing offline delete.`, error);
     if (mode === 'auto') {
-      console.log('[dbDelete] Marking server unreachable due to delete failure.');
       setServerReachable(false);
     }
     await addToSyncQueue({ id, type: 'DELETE' });
@@ -871,7 +829,6 @@ export const dbDelete = async (id: string): Promise<void> => {
 };
 
 export const dbClearAll = async (): Promise<void> => {
-  console.log('[dbClearAll] Clearing all database cache and calling server wipe...');
   
   addActivityLog({
     actionType: 'CLEAR',
@@ -891,7 +848,6 @@ export const dbClearAll = async (): Promise<void> => {
 
   const mode = getWorkMode();
   if (mode === 'local') {
-    console.log('[dbClearAll] Mode is "local". Cleared local cache only.');
     window.dispatchEvent(new CustomEvent('gers_sync_status_change'));
     window.dispatchEvent(new CustomEvent('gers_data_synced', { detail: [] }));
     return;
@@ -902,7 +858,6 @@ export const dbClearAll = async (): Promise<void> => {
       method: 'POST'
     });
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-    console.log('[dbClearAll] Server database cleared successfully.');
     
     window.dispatchEvent(new CustomEvent('gers_sync_status_change'));
     window.dispatchEvent(new CustomEvent('gers_data_synced', { detail: [] }));

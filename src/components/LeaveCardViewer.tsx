@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Employee, LeaveRecord } from '../types/employee';
-import { Printer, Plus } from 'lucide-react';
+import { Printer, Plus, Download } from 'lucide-react';
 import LeaveCardPrintModal from './LeaveCardPrintModal';
 
 interface Props {
@@ -15,6 +15,66 @@ interface EditingCell {
   year?: number;
   month?: string;
 }
+
+
+const parseDetailedAbsences = (text: string) => {
+  if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  
+  const parseChunk = (chunk: string) => {
+    let days = 0;
+    const dayMap = new Map<number, number>();
+    const parts = chunk.split(',');
+    for (let part of parts) {
+      part = part.trim();
+      if (!part) continue;
+      const isHalf = part.toLowerCase().includes('half') || part.toLowerCase().includes('am') || part.toLowerCase().includes('pm');
+      const weight = isHalf ? 0.5 : 1;
+      const rangeMatch = part.match(/(\d+)\s*-\s*(\d+)/);
+      if (rangeMatch) {
+         const s = parseInt(rangeMatch[1]);
+         const e = parseInt(rangeMatch[2]);
+         if (e >= s && s <= 31 && e <= 31) {
+            for (let i = s; i <= e; i++) {
+               const curr = dayMap.get(i) || 0;
+               dayMap.set(i, Math.max(curr, weight));
+            }
+         }
+         continue;
+      }
+      const numMatch = part.match(/(\d+)/);
+      if (numMatch) {
+         const val = parseInt(numMatch[1]);
+         if (val <= 31) {
+            const curr = dayMap.get(val) || 0;
+            dayMap.set(val, Math.max(curr, weight));
+         }
+      }
+    }
+    for (const value of dayMap.values()) days += value;
+    return days;
+  };
+
+  const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  const upperText = text.toUpperCase();
+  
+  if (!/(VL|SL|FL|PL|SPL)\s*:/.test(upperText)) {
+      result.unknown = parseChunk(text);
+      return result;
+  }
+
+  const parts = upperText.split(/(VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
+  
+  let currentType = 'unknown';
+  for (let i = 0; i < parts.length; i++) {
+     const p = parts[i].trim();
+     if (['VL', 'SL', 'FL', 'PL', 'SPL'].includes(p)) {
+         currentType = p.toLowerCase();
+     } else {
+         (result as any)[currentType] += parseChunk(p);
+     }
+  }
+  return result;
+};
 
 export default function LeaveCardViewer({ employee, onSave }: Props) {
   const records = employee.leaveRecords || [];
@@ -80,20 +140,37 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     let newRecords = [...records];
     if (!editingCell) return newRecords;
 
-    const { id, field, value, year, month } = editingCell;
+    const { id, field, value: rawValue, year, month } = editingCell;
+    let value = rawValue;
+    if (field === 'particulars') {
+       value = value.replace(/,\s*/g, ', ').trim();
+    }
 
     if (id.startsWith('new-')) {
       if (!value.trim()) return newRecords;
       
+      let newVlAbsUndWp = field === 'vlAbsUndWp' ? value : '';
+      let newSlAbsUndWp = field === 'slAbsUndWp' ? value : '';
+      if (field === 'particulars') {
+         const parsed = parseDetailedAbsences(value);
+         if (parsed.vl > 0 || parsed.unknown > 0 || parsed.spl > 0 || parsed.pl > 0 || parsed.fl > 0) {
+            newVlAbsUndWp = (parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl).toString();
+         }
+         if (parsed.sl > 0) {
+            newSlAbsUndWp = parsed.sl.toString();
+         }
+      }
+
       const newRec: LeaveRecord = {
         id: 'lc-' + id,
-        period: `${year} ${month}`,
+        period: field === 'period' ? (value.includes(year.toString()) ? value : `${year} ${value}`) : `${year} ${month}`,
+        particulars: field === 'particulars' ? value : '',
         vlEarned: field === 'vlEarned' ? value : '1.25',
-        vlAbsUndWp: field === 'vlAbsUndWp' ? value : '',
+        vlAbsUndWp: newVlAbsUndWp,
         vlBalance: field === 'vlBalance' ? value : '',
         vlAbsUndWop: field === 'vlAbsUndWop' ? value : '',
         slEarned: field === 'slEarned' ? value : '1.25',
-        slAbsUndWp: field === 'slAbsUndWp' ? value : '',
+        slAbsUndWp: newSlAbsUndWp,
         slBalance: field === 'slBalance' ? value : '',
         slAbsUndWop: field === 'slAbsUndWop' ? value : '',
         dateAndAction: field === 'dateAndAction' ? value : ''
@@ -120,7 +197,38 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     } else {
       newRecords = newRecords.map(r => {
         if (r.id === id) {
-          const updated = { ...r, [field]: value };
+          let finalValue = value;
+          if (field === 'period' && year && !finalValue.toString().includes(year.toString())) {
+             finalValue = `${year} ${finalValue}`;
+          }
+          const updated = { ...r, [field]: finalValue };
+          
+          if (field === 'particulars') {
+            const parsed = parseDetailedAbsences(finalValue.toString());
+            const vWP = parseFloat(updated.vlAbsUndWp || '0') || 0;
+            const sWP = parseFloat(updated.slAbsUndWp || '0') || 0;
+            const vWOP = parseFloat(updated.vlAbsUndWop || '0') || 0;
+            const sWOP = parseFloat(updated.slAbsUndWop || '0') || 0;
+            
+            const slDays = parsed.sl;
+            const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
+
+            if (slDays > 0) {
+                if (sWOP > 0) updated.slAbsUndWop = slDays.toString();
+                else updated.slAbsUndWp = slDays.toString();
+            } else if (slDays === 0) {
+                updated.slAbsUndWp = '';
+                updated.slAbsUndWop = '';
+            }
+
+            if (vlDays > 0) {
+                if (vWOP > 0) updated.vlAbsUndWop = vlDays.toString();
+                else updated.vlAbsUndWp = vlDays.toString();
+            } else if (vlDays === 0) {
+                updated.vlAbsUndWp = '';
+                updated.vlAbsUndWop = '';
+            }
+          }
           if (field === 'vlBalance') updated.vlManual = true;
           if (field === 'slBalance') updated.slManual = true;
           if (field === 'vlEarned' || field === 'vlAbsUndWp') updated.vlManual = false;
@@ -136,33 +244,132 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     return newRecords;
   }, [records, editingCell]);
 
-  const saveEdit = () => {
+
+  const handleFillStandardYear = (yearToFill: number) => {
+    if (!onSave) return;
+    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let newRecords = [...records];
+    
+    monthsList.forEach(m => {
+      const existing = newRecords.find(r => r.period?.includes(yearToFill.toString()) && r.period?.toLowerCase().includes(m.toLowerCase()));
+      if (!existing) {
+        newRecords.push({
+          id: 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7),
+          period: `${yearToFill} ${m}`,
+          vlEarned: '1.25',
+          slEarned: '1.25',
+          vlAbsUndWp: '',
+          vlBalance: '',
+          vlAbsUndWop: '',
+          slAbsUndWp: '',
+          slBalance: '',
+          slAbsUndWop: '',
+          dateAndAction: ''
+        });
+      } else {
+        if (!existing.vlEarned) existing.vlEarned = '1.25';
+        if (!existing.slEarned) existing.slEarned = '1.25';
+      }
+    });
+
+    newRecords.sort((a, b) => {
+      if (a.isSeparator) return -1;
+      if (b.isSeparator) return 1;
+      const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+      const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+      if (aYear !== bYear) return aYear - bYear;
+      
+      const getMonthIndex = (period: string) => {
+        const p = (period || '').toLowerCase();
+        const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        const idx = months.findIndex(m => p.includes(m));
+        return idx === -1 ? 99 : idx;
+      };
+      return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
+    });
+
+    newRecords = recalculateBalances(newRecords);
+    onSave({ ...employee, leaveRecords: newRecords });
+  };
+
+  const exportToCSV = () => {
+    const headers = [
+      'Period', 'Particulars', 'VL Earned', 'VL Abs/Und w/P', 'VL Balance', 'VL Abs/Und w/o P',
+      'SL Earned', 'SL Abs/Und w/P', 'SL Balance', 'SL Abs/Und w/o P', 'Date and Action'
+    ];
+    
+    const rows = records.map(r => {
+      if (r.isSeparator) return ['--- SEPARATOR ---'];
+      return [
+        r.period || '',
+        r.particulars || '',
+        r.vlEarned || '',
+        r.vlAbsUndWp || '',
+        r.vlBalance || '',
+        r.vlAbsUndWop || '',
+        r.slEarned || '',
+        r.slAbsUndWp || '',
+        r.slBalance || '',
+        r.slAbsUndWop || '',
+        r.dateAndAction || ''
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${employee.surname || 'Employee'}_Leave_Card.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const saveEdit = (nextCell?: EditingCell | null) => {
     if (!editingCell || !onSave) {
-      setEditingCell(null);
+      if (nextCell !== undefined) setEditingCell(nextCell);
+      else setEditingCell(null);
       return;
     }
 
     const { id, field, value } = editingCell;
 
     if (id.startsWith('new-') && !value.trim()) {
-      setEditingCell(null);
+      if (nextCell !== undefined) setEditingCell(nextCell);
+      else setEditingCell(null);
       return;
     }
 
     if (!id.startsWith('new-')) {
        const existing = records.find(r => r.id === id);
        if (existing && existing[field] === value) {
-         setEditingCell(null);
+         if (nextCell !== undefined) setEditingCell(nextCell);
+         else setEditingCell(null);
          return;
        }
     }
 
-    const finalRecords = displayRecords.map(r => 
-      r.id === `lc-${id}` ? { ...r, id: 'lc-' + Date.now().toString(36) } : r
-    );
+    let newGeneratedId = '';
+    const finalRecords = displayRecords.map(r => {
+      if (r.id === `lc-${id}`) {
+         newGeneratedId = 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+         return { ...r, id: newGeneratedId };
+      }
+      return r;
+    });
+
+    let finalNextCell = nextCell !== undefined ? nextCell : null;
+    if (finalNextCell && finalNextCell.id === `lc-${id}`) {
+        finalNextCell.id = newGeneratedId;
+    }
 
     onSave({ ...employee, leaveRecords: finalRecords });
-    setEditingCell(null);
+    setEditingCell(finalNextCell);
   };
 
   const renderEditableCell = (
@@ -183,21 +390,88 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       setEditingCell({
         id,
         field,
-        value: rec ? (rec[field] || '') : '',
+        value: rec ? (rec[field] !== undefined ? String(rec[field]) : '') : '',
         year,
         month: monthLabel
       });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        saveEdit();
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         setEditingCell(null);
+        return;
+      }
+      
+      const fieldsOrder: (keyof LeaveRecord)[] = [
+        'period', 'particulars', 'vlEarned', 'vlAbsUndWp', 'vlBalance', 'vlAbsUndWop',
+        'slEarned', 'slAbsUndWp', 'slBalance', 'slAbsUndWop',
+        'dateAndAction'
+      ];
+      const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'force leave'];
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const currFieldIndex = fieldsOrder.indexOf(field);
+        let nextField = field;
+        
+        if (e.shiftKey) {
+           if (currFieldIndex > 0) nextField = fieldsOrder[currFieldIndex - 1];
+        } else {
+           if (currFieldIndex < fieldsOrder.length - 1) nextField = fieldsOrder[currFieldIndex + 1];
+        }
+        
+        const currentRec = displayRecords.find(r => r.id === id || r.id === `lc-${id}`);
+        const realNextId = currentRec ? currentRec.id : id;
+
+        const nextCell: EditingCell = {
+           id: realNextId,
+           field: nextField,
+           value: currentRec ? (currentRec[nextField] !== undefined ? String(currentRec[nextField]) : '') : '',
+           year,
+           month: monthLabel
+        };
+        saveEdit(nextCell);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        let mIdx = monthsList.findIndex(m => monthLabel.toLowerCase().includes(m.toLowerCase()));
+        let nextMonthStr = monthLabel;
+        let nextYear = year;
+        
+        if (e.shiftKey) {
+            mIdx = mIdx - 1;
+        } else {
+            mIdx = mIdx + 1;
+        }
+        
+        if (mIdx >= monthsList.length) {
+            nextYear = year + 1;
+            mIdx = 0;
+        } else if (mIdx < 0) {
+            nextYear = year - 1;
+            mIdx = monthsList.length - 1;
+        }
+        
+        const targetMonthMatch = monthsList[mIdx];
+        const allTargetRecords = displayRecords.filter(r => r.period?.includes(nextYear.toString()));
+        const nextRec = allTargetRecords.find(r => r.period?.toLowerCase().includes(targetMonthMatch.toLowerCase()));
+        
+        const realNextId = nextRec ? nextRec.id : `new-${nextYear}-${targetMonthMatch}`;
+        
+        const nextCell: EditingCell = {
+           id: realNextId,
+           field: field,
+           value: nextRec ? ((nextRec as any)[field] || '') : '',
+           year: nextYear,
+           month: targetMonthMatch
+        };
+        saveEdit(nextCell);
       }
     };
 
     if (isEditing) {
+      let placeholder = '';
+      if (field === 'particulars') placeholder = 'e.g. SL: 1,2,3 VL: 4,5,6';
+      
       return (
         <td className={className}>
           <input 
@@ -206,8 +480,9 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             className={`w-full text-${align} border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1`}
             value={editingCell.value}
             onChange={e => setEditingCell({ ...editingCell, value: e.target.value })}
-            onBlur={saveEdit}
+            onBlur={() => saveEdit()}
             onKeyDown={handleKeyDown}
+            placeholder={placeholder}
           />
         </td>
       );
@@ -216,8 +491,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     return (
       <td 
         className={`${className} ${onSave ? 'cursor-pointer hover:bg-blue-50/30' : ''}`} 
-        onDoubleClick={handleDoubleClick}
-        title={onSave ? "Double-click to edit" : undefined}
+        onClick={handleDoubleClick}
+        title={onSave ? "Click to edit" : undefined}
       >
         {displayValue}
       </td>
@@ -294,6 +569,13 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             </div>
           )}
           <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors h-[52px]"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
+          <button
             onClick={() => setIsPrintOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white font-bold uppercase tracking-widest text-[10px] rounded-lg hover:bg-slate-700 transition-colors h-[52px]"
           >
@@ -315,10 +597,11 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] uppercase bg-slate-50 text-slate-500 font-black tracking-wider">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 align-middle">Period / Particulars</th>
+                <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 align-middle">Period</th>
+                <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 align-middle">Particulars<br/><span className="text-[10px] font-normal">(Dates of Absence)</span></th>
                 <th colSpan={4} className="px-4 py-2 border-r border-slate-200 text-center bg-blue-50/50 text-blue-800">Vacation Leave</th>
                 <th colSpan={4} className="px-4 py-2 border-r border-slate-200 text-center bg-emerald-50/50 text-emerald-800">Sick Leave</th>
-                <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 align-middle">Action Taken</th>
+                <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 align-middle">Date & Action Taken</th>
                 <th rowSpan={2} className="px-4 py-3 align-middle text-right bg-red-50/50 text-red-800">Est. Salary Deduction (WOP)</th>
               </tr>
               <tr className="border-b border-slate-200">
@@ -340,7 +623,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
                 rows.push(
                   <tr key={`year-${year}`} className="border-b-4 border-slate-300 bg-slate-100">
-                    <td colSpan={11} className="px-4 py-3 text-center font-bold text-slate-500 uppercase tracking-widest">
+                    <td colSpan={12} className="px-4 py-3 text-center font-bold text-slate-500 uppercase tracking-widest">
                       {year}
                     </td>
                   </tr>
@@ -366,7 +649,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
                       rows.push(
                         <tr key={rec.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                          <td className="px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap">{displayPeriod}</td>
+                          {renderEditableCell(rec, year, month.match, month.label, 'period', displayPeriod, "px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap", "left")}
+                          {renderEditableCell(rec, year, month.match, month.label, 'particulars', rec.particulars, "px-4 py-3 border-r border-slate-200 text-sm text-slate-700 whitespace-nowrap", "left")}
                           {renderEditableCell(rec, year, month.match, month.label, 'vlEarned', rec.vlEarned, "px-2 py-3 border-r border-slate-100 text-center")}
                           {renderEditableCell(rec, year, month.match, month.label, 'vlAbsUndWp', rec.vlAbsUndWp, "px-2 py-3 border-r border-slate-100 text-center")}
                           {renderEditableCell(rec, year, month.match, month.label, 'vlBalance', rec.vlBalance, "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}
@@ -388,7 +672,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                   } else {
                     rows.push(
                       <tr key={`empty-${year}-${month.match}`} className="border-b border-slate-100 opacity-50 hover:opacity-100 hover:bg-slate-50/50 transition-all">
-                        <td className="px-4 py-3 border-r border-slate-200 font-medium whitespace-nowrap text-slate-400">{month.label}</td>
+                        {renderEditableCell(null, year, month.match, month.label, 'period', month.label, "px-4 py-3 border-r border-slate-200 font-medium whitespace-nowrap text-slate-400", "left")}
+                        {renderEditableCell(null, year, month.match, month.label, 'particulars', '', "px-4 py-3 border-r border-slate-200 text-sm text-slate-400 whitespace-nowrap", "left")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlEarned', '', "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlAbsUndWp', '', "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlBalance', '', "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}
@@ -415,7 +700,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                     const totalDeduction = calculateDeduction(rec.vlAbsUndWop) + calculateDeduction(rec.slAbsUndWop);
                     rows.push(
                       <tr key={rec.id} className="border-b border-slate-100 bg-blue-50/20 hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap">{rec.period?.replace(new RegExp(`\\b${year}\\b`, 'g'), '').trim()}</td>
+                        {renderEditableCell(rec, year, 'force', 'Force Leave', 'period', rec.period?.replace(new RegExp(`\\b${year}\\b`, 'g'), '').trim(), "px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap", "left")}
+                        {renderEditableCell(rec, year, 'force', 'Force Leave', 'particulars', rec.particulars, "px-4 py-3 border-r border-slate-200 text-sm text-slate-700 whitespace-nowrap", "left")}
                         {renderEditableCell(rec, year, '', '', 'vlEarned', rec.vlEarned, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(rec, year, '', '', 'vlAbsUndWp', rec.vlAbsUndWp, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(rec, year, '', '', 'vlBalance', rec.vlBalance, "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}

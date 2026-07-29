@@ -235,7 +235,6 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
     if (docToRemove?.driveFileId) {
       try {
         await deleteFileFromDrive(docToRemove.driveFileId);
-        console.log('Successfully deleted file from Google Drive:', docToRemove.driveFileId);
       } catch (err) {
         console.error('Failed to delete file from Google Drive:', err);
         // Continue to delete locally even if Drive deletion fails

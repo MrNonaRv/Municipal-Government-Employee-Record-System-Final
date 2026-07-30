@@ -17,6 +17,7 @@ import { dataURLtoBlob } from './utils/helpers';
 
 export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [duplicateEmpToSave, setDuplicateEmpToSave] = useState<Employee | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
@@ -402,7 +403,20 @@ export default function App() {
     }
   };
 
-  const handleSave = async (emp: Employee, isAutosave = false) => {
+  const handleSave = async (emp: Employee, isAutosave = false, skipDuplicateCheck = false) => {
+    if (!isAutosave && !skipDuplicateCheck) {
+      const isNewOrNameChanged = true;
+      const duplicate = employees.find(e => 
+        e.id !== emp.id && 
+        e.firstName.trim().toLowerCase() === emp.firstName.trim().toLowerCase() && 
+        e.surname.trim().toLowerCase() === emp.surname.trim().toLowerCase()
+      );
+      if (duplicate) {
+        setDuplicateEmpToSave(emp);
+        return;
+      }
+    }
+    
     if (!isAutosave) setIsSaving(true);
     try {
       await dbPut(emp);

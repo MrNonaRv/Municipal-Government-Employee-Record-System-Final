@@ -1,4 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useRef, useEffect } from 'react';
 import { ServiceRecord } from '../types/employee';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -57,32 +59,38 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
         <table className="w-full text-xs text-left whitespace-nowrap">
           <thead className="bg-slate-100 text-slate-600 uppercase font-black tracking-wider text-[9px] border-b border-slate-200">
             <tr>
-              <th className="px-2 py-3 min-w-[40px] text-center">#</th>
-              <th className="px-2 py-3 min-w-[140px]">From</th>
-              <th className="px-2 py-3 min-w-[160px]">To</th>
+              <th className="px-2 py-3 w-10 text-center">#</th>
+              <th className="px-2 py-3 w-32">From</th>
+              <th className="px-2 py-3 w-32">To</th>
               <th className="px-2 py-3 min-w-[200px]">Designation</th>
-              <th className="px-2 py-3 min-w-[100px]">Status</th>
-              <th className="px-2 py-3 min-w-[120px]">Salary</th>
+              <th className="px-2 py-3 w-24">Status</th>
+              <th className="px-2 py-3 w-32">Salary</th>
               <th className="px-2 py-3 min-w-[150px]">Station/Place</th>
               <th className="px-2 py-3 min-w-[120px]">Branch</th>
-              <th className="px-2 py-3 min-w-[100px]">L/V W/O Pay</th>
-              <th className="px-2 py-3 min-w-[140px]">Sep. Date</th>
+              <th className="px-2 py-3 w-24">L/V W/O Pay</th>
+              <th className="px-2 py-3 w-32">Sep. Date</th>
               <th className="px-2 py-3 min-w-[150px]">Sep. Cause</th>
-              <th className="px-2 py-3 min-w-[60px] text-center">Action</th>
+              <th className="px-2 py-3 w-12 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
+            {records.length === 0 && (
+              <tr>
+                <td colSpan={12} className="px-4 py-12 text-center text-slate-400 font-medium">
+                  No service records encoded. Click "Add Row" to start.
+                </td>
+              </tr>
+            )}
             {records.map((rec, i) => (
               <tr key={rec.id} className="hover:bg-blue-50/30 transition-colors group">
                 <td className="px-2 py-1 text-center font-mono text-slate-400 text-[10px]">{i + 1}</td>
                 <td className="px-1 py-1">
                   <input
                     data-id={rec.id}
-                    type="text"
-                    placeholder="YYYY-MM-DD"
+                    type="date"
                     value={rec.from || ''}
                     onChange={(e) => updateRecord(rec.id, 'from', e.target.value)}
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -144,11 +152,10 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                 </td>
                 <td className="px-1 py-1">
                   <input
-                    type="text"
-                    placeholder="YYYY-MM-DD"
+                    type="date"
                     value={rec.sepDate || ''}
                     onChange={(e) => updateRecord(rec.id, 'sepDate', e.target.value)}
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -171,26 +178,11 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                 </td>
               </tr>
             ))}
-            {/* Visual padding for remaining rows up to 28 */}
-            {Array.from({ length: Math.max(0, 28 - records.length) }).map((_, i) => (
-              <tr key={`empty-${i}`} className="bg-slate-50/50">
-                <td className="px-2 py-2.5 text-center font-mono text-slate-300 text-[10px] border-r border-slate-100">{records.length + i + 1}</td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5 border-r border-slate-100"></td>
-                <td className="px-2 py-2.5"></td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
     </div>
   );
 }
+`;
+fs.writeFileSync('src/components/ServiceRecordEditor.tsx', code);

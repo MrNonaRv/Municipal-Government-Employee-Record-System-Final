@@ -437,6 +437,16 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
                 className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
               />
             </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-sans">Date of Birth</label>
+              <input 
+                type="date"
+                name="dateOfBirth" 
+                value={formData.dateOfBirth || ''} 
+                onChange={handleChange} 
+                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent transition-all bg-white" 
+              />
+            </div>
           </div>
         </div>
         

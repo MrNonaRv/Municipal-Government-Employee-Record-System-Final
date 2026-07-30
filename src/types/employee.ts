@@ -91,6 +91,7 @@ export interface Employee {
   firstName: string;
   middleName: string;
   nameExtension: string;
+  dateOfBirth: string;
   sex: string;
   civilStatus: string;
   citizenship: string;

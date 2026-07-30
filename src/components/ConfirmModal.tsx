@@ -8,9 +8,12 @@ interface Props {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
+  confirmText?: string;
+  cancelText?: string;
+  confirmStyle?: "danger" | "primary";
 }
 
-export default function ConfirmModal({ title, message, onConfirm, onCancel, isLoading = false }: Props) {
+export default function ConfirmModal({ title, message, onConfirm, onCancel, isLoading = false, confirmText = "Confirm Destruction", cancelText = "{cancelText}", confirmStyle = "danger" }: Props) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
       <motion.div 
@@ -31,12 +34,12 @@ export default function ConfirmModal({ title, message, onConfirm, onCancel, isLo
               onClick={onConfirm} 
               disabled={isLoading} 
               aria-label={isLoading ? "Confirming..." : "Confirm deletion of record"}
-              className="w-full py-3 bg-[var(--danger)] hover:bg-red-700 text-white rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+              className={`w-full py-3 ${confirmStyle === "danger" ? "bg-[var(--danger)] hover:bg-red-700 shadow-red-500/20" : "bg-[var(--navy)] hover:bg-slate-800 shadow-slate-900/20"} text-white rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg`}
             >
               {isLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                'Confirm Destruction'
+                confirmText
               )}
             </button>
             <button 

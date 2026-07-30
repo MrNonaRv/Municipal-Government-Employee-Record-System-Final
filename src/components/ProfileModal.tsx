@@ -1,5 +1,5 @@
 import { getResolvedLatestRecord } from '../utils/helpers';
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect, Suspense, lazy, useRef } from "react";
 
 import { Employee, Attachment } from "../types/employee";
 import {
@@ -48,19 +48,40 @@ interface Props {
   onSave?: (emp: Employee) => void;
 }
 
-const DocumentThumbnail = ({
+const DocumentThumbnail = React.memo(({
   doc,
   onPreview,
 }: {
   doc: Attachment;
   onPreview: (doc: Attachment) => void;
 }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
     if (doc.driveFileId) return;
     if (!doc.fileData || doc.fileType !== "application/pdf") return;
-
+    
     let active = true;
     fetch(doc.fileData)
       .then((res) => res.blob())
@@ -68,39 +89,56 @@ const DocumentThumbnail = ({
         if (active) setBlobUrl(URL.createObjectURL(blob));
       })
       .catch((e) => console.error(e));
-
+      
     return () => {
       active = false;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [doc]);
+  }, [doc, isVisible]);
+
+  const isImage = doc.fileType.startsWith("image/") && doc.fileData;
 
   return (
-    <>
-      {doc.driveFileId ? (
-        <iframe
-          src={`https://drive.google.com/file/d/${doc.driveFileId}/preview`}
-          className="w-full h-full object-cover pointer-events-none"
-          title={doc.name}
-        />
-      ) : doc.fileType.startsWith("image/") && doc.fileData ? (
-        <img
-          src={doc.fileData}
-          alt={doc.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          referrerPolicy="no-referrer"
-        />
-      ) : doc.fileType === "application/pdf" && blobUrl ? (
-        <iframe
-          src={`${blobUrl}#view=FitH&toolbar=0&navpanes=0`}
-          className="w-full h-full object-cover pointer-events-none border-0"
-          title={doc.name}
-        />
+    <div ref={containerRef} className="w-full h-full absolute inset-0">
+      {!isVisible ? (
+        <div className="flex flex-col items-center justify-center text-slate-300 gap-2 p-4 h-full w-full bg-slate-50">
+          <Loader2 className="animate-spin text-slate-400" size={24} />
+        </div>
       ) : (
-        <FileText size={48} className="text-slate-300" />
+        <>
+          {doc.driveFileId ? (
+            <iframe
+              src={`https://drive.google.com/file/d/${doc.driveFileId}/preview`}
+              className="w-full h-full object-cover pointer-events-none"
+              title={doc.name}
+              loading="lazy"
+            />
+          ) : isImage ? (
+            <img
+              src={doc.fileData}
+              alt={doc.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              referrerPolicy="no-referrer"
+              loading="lazy"
+            />
+          ) : doc.fileType === "application/pdf" && blobUrl ? (
+            <iframe
+              src={`${blobUrl}#view=FitH&toolbar=0&navpanes=0`}
+              className="w-full h-full object-cover pointer-events-none border-0"
+              title={doc.name}
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-slate-300 gap-2 p-4 h-full w-full bg-slate-50">
+              <FileText size={48} className="text-slate-400" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-slate-400 text-center truncate w-full px-2">
+                Document
+              </span>
+            </div>
+          )}
+        </>
       )}
-
-      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -111,7 +149,7 @@ const DocumentThumbnail = ({
         >
           <Eye size={20} />
         </button>
-        {!doc.driveFileId && (
+        {!doc.driveFileId && doc.fileData && (
           <a
             href={doc.fileData}
             download={doc.fileName}
@@ -123,10 +161,9 @@ const DocumentThumbnail = ({
           </a>
         )}
       </div>
-    </>
+    </div>
   );
-};
-
+});
 export default function ProfileModal({
   employee,
   onClose,

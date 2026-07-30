@@ -30,6 +30,10 @@ export default function App() {
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const handleEditEmployee = React.useCallback((emp: Employee) => {
+    setEditingEmp(emp);
+    setEditTab('service');
+  }, []);
   const itemsPerPage = 12;
   const [showSyncHistory, setShowSyncHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -789,7 +793,7 @@ export default function App() {
                     employee={emp} 
                     viewMode={viewMode}
                     onView={setViewingEmp}
-                    onEdit={(emp) => { setEditingEmp(emp); setEditTab('service'); }}
+                    onEdit={handleEditEmployee}
                     onDelete={setDeletingEmp}
                   />
                 </motion.div>

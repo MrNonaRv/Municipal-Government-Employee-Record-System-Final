@@ -586,7 +586,7 @@ export default function ProfileModal({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                       <div className="p-4 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
                         <span className="text-[8px] uppercase font-black text-slate-400 tracking-widest block mb-2">
                           Total S.N. Records
@@ -609,6 +609,14 @@ export default function ProfileModal({
                         </span>
                         <strong className="text-sm font-black text-slate-900 block truncate">
                           {(employee.serviceRecords || []).length > 0 ? (getResolvedLatestRecord(employee.serviceRecords || [])?.branch || '—') : "—"}
+                        </strong>
+                      </div>
+                      <div className="p-4 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
+                        <span className="text-[8px] uppercase font-black text-slate-400 tracking-widest block mb-2">
+                          First Appt. Date
+                        </span>
+                        <strong className="text-sm font-black text-slate-900 block truncate">
+                          {(employee.serviceRecords || []).length > 0 ? [...employee.serviceRecords].sort((a, b) => new Date(a.from).getTime() - new Date(b.from).getTime())[0].from || '—' : "—"}
                         </strong>
                       </div>
                       <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center shadow-sm">

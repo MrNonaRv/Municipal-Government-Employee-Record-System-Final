@@ -17,7 +17,6 @@ interface EditingCell {
   month?: string;
 }
 
-
 const parseDetailedAbsences = (text: string) => {
   if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   
@@ -28,8 +27,10 @@ const parseDetailedAbsences = (text: string) => {
     for (let part of parts) {
       part = part.trim();
       if (!part) continue;
+      
       const isHalf = part.toLowerCase().includes('half') || part.toLowerCase().includes('am') || part.toLowerCase().includes('pm');
       const weight = isHalf ? 0.5 : 1;
+      
       const rangeMatch = part.match(/(\d+)\s*-\s*(\d+)/);
       if (rangeMatch) {
          const s = parseInt(rangeMatch[1]);
@@ -42,6 +43,7 @@ const parseDetailedAbsences = (text: string) => {
          }
          continue;
       }
+      
       const numMatch = part.match(/(\d+)/);
       if (numMatch) {
          const val = parseInt(numMatch[1]);
@@ -54,7 +56,7 @@ const parseDetailedAbsences = (text: string) => {
     for (const value of dayMap.values()) days += value;
     return days;
   };
-
+  
   const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   const upperText = text.toUpperCase();
   
@@ -62,7 +64,7 @@ const parseDetailedAbsences = (text: string) => {
       result.unknown = parseChunk(text);
       return result;
   }
-
+  
   const parts = upperText.split(/(VL WOP|SL WOP|AWOL|LWOP|WOP|VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
   
   let currentType = 'unknown';
@@ -78,9 +80,162 @@ const parseDetailedAbsences = (text: string) => {
   return result;
 };
 
+const EditableCellComponent = ({
+  initialValue,
+  onSave,
+  onCancel,
+  onTab,
+  align,
+  placeholder,
+  isEditing
+}: {
+  initialValue: string;
+  onSave: (val: string) => void;
+  onCancel: () => void;
+  onTab: (shiftKey: boolean) => void;
+  align: string;
+  placeholder: string;
+  isEditing: boolean;
+}) => {
+  const [val, setVal] = useState(initialValue);
+  
+  return (
+    <input
+      autoFocus
+      type="text"
+      className={`w-full text-${align} border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1`}
+      value={val}
+      onChange={e => setVal(e.target.value)}
+      onBlur={() => onSave(val)}
+      onKeyDown={e => {
+        if (e.key === 'Escape') onCancel();
+        else if (e.key === 'Enter') onSave(val);
+        else if (e.key === 'Tab') {
+          e.preventDefault();
+          onSave(val);
+          onTab(e.shiftKey);
+        }
+      }}
+      onFocus={e => e.target.select()}
+      placeholder={placeholder}
+    />
+  );
+};
+
 export default function LeaveCardViewer({ employee, onSave }: Props) {
   const records = employee.leaveRecords || [];
-  
+  const currentYear = new Date().getFullYear();
+  const currentMonthIndex = new Date().getMonth();
+
+
+  const handleAddAbsence = (year: number, month: string, leaveType: string, dates: string) => {
+    if (!onSave) return;
+    let newRecords = [...records];
+    const periodMatch = `${year} ${month}`.toLowerCase();
+    
+    let existingIdx = newRecords.findIndex(r => {
+      const p = (r.period || '').toLowerCase();
+      return p.includes(year.toString()) && p.includes(month.toLowerCase().replace('.', ''));
+    });
+    if (existingIdx >= 0) {
+      let rec = { ...newRecords[existingIdx] };
+      const parsed = parseDetailedAbsences(rec.particulars || '');
+      
+      let vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
+      let slDays = parsed.sl;
+      let vlWop = parsed.vl_wop;
+      let slWop = parsed.sl_wop;
+
+      const newParsed = parseDetailedAbsences(leaveType + ': ' + dates);
+      vlDays += newParsed.vl + newParsed.unknown + newParsed.spl + newParsed.pl + newParsed.fl;
+      slDays += newParsed.sl;
+      vlWop += newParsed.vl_wop;
+      slWop += newParsed.sl_wop;
+
+      let parts = rec.particulars ? rec.particulars + ', ' : '';
+      if (leaveType === 'VL WOP' || leaveType === 'SL WOP' || leaveType === 'AWOL') {
+         parts += `${leaveType}: ${dates}`;
+      } else {
+         parts += `${leaveType}: ${dates}`;
+      }
+
+      rec.particulars = parts;
+      if (vlDays > 0) rec.vlAbsUndWp = vlDays.toString();
+      if (slDays > 0) rec.slAbsUndWp = slDays.toString();
+      if (vlWop > 0) rec.vlAbsUndWop = vlWop.toString();
+      if (slWop > 0) rec.slAbsUndWop = slWop.toString();
+      
+      newRecords[existingIdx] = rec;
+    } else {
+      const newParsed = parseDetailedAbsences(leaveType + ': ' + dates);
+      let vlDays = newParsed.vl + newParsed.unknown + newParsed.spl + newParsed.pl + newParsed.fl;
+      let slDays = newParsed.sl;
+      let vlWop = newParsed.vl_wop;
+      let slWop = newParsed.sl_wop;
+
+      newRecords.push({
+        id: 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7),
+        period: `${year} ${month}`,
+        particulars: `${leaveType}: ${dates}`,
+        vlEarned: '1.25',
+        slEarned: '1.25',
+        vlAbsUndWp: vlDays > 0 ? vlDays.toString() : '',
+        slAbsUndWp: slDays > 0 ? slDays.toString() : '',
+        vlAbsUndWop: vlWop > 0 ? vlWop.toString() : '',
+        slAbsUndWop: slWop > 0 ? slWop.toString() : '', vlBalance: '', slBalance: '', dateAndAction: ''
+      });
+    }
+
+    newRecords.sort((a, b) => {
+        if (a.isSeparator) return -1;
+        if (b.isSeparator) return 1;
+        const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+        const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+        if (aYear !== bYear) return aYear - bYear;
+        
+        const getMonthIndex = (period: string) => {
+          const p = (period || '').toLowerCase();
+          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const idx = months.findIndex(m => p.includes(m));
+          return idx === -1 ? 99 : idx;
+        };
+        return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
+    });
+
+    newRecords = recalculateBalances(newRecords);
+    onSave({ ...employee, leaveRecords: newRecords });
+    setIsAddAbsenceOpen(false);
+  };
+
+  const exportToCSV = () => {
+    let csvContent = 'Period,Particulars,VL Earned,VL Abs/Und W/P,VL Balance,VL Abs/Und WOP,SL Earned,SL Abs/Und W/P,SL Balance,SL Abs/Und WOP,Date and Action Taken\n';
+    
+    records.forEach(rec => {
+      const row = [
+        `"${rec.period || ''}"`,
+        `"${rec.particulars || ''}"`,
+        `"${rec.vlEarned || ''}"`,
+        `"${rec.vlAbsUndWp || ''}"`,
+        `"${rec.vlBalance || ''}"`,
+        `"${rec.vlAbsUndWop || ''}"`,
+        `"${rec.slEarned || ''}"`,
+        `"${rec.slAbsUndWp || ''}"`,
+        `"${rec.slBalance || ''}"`,
+        `"${rec.slAbsUndWop || ''}"`,
+        `"${rec.dateAndAction || ''}"`
+      ];
+      csvContent += row.join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${employee.surname || 'Employee'}_Leave_Card.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const latestSalary = useMemo(() => {
     if (!employee.serviceRecords || employee.serviceRecords.length === 0) return 0;
     const latest = employee.serviceRecords[employee.serviceRecords.length - 1];
@@ -89,11 +244,21 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
   }, [employee.serviceRecords]);
 
   const dailyRate = latestSalary / 22;
+
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [isAddAbsenceOpen, setIsAddAbsenceOpen] = useState(false);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+
+
+  
   const [extraYears, setExtraYears] = useState<number[]>([]);
   const [addYearInput, setAddYearInput] = useState('');
+
+  const firstAppointmentDate = useMemo(() => {
+    if (!employee.serviceRecords || employee.serviceRecords.length === 0) return null;
+    const sorted = [...employee.serviceRecords].sort((a, b) => new Date(a.from).getTime() - new Date(b.from).getTime());
+    return sorted[0].from;
+  }, [employee.serviceRecords]);
 
   const calculateDeduction = (wopStr: string) => {
     const wop = parseFloat(wopStr) || 0;
@@ -103,8 +268,139 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
   const recalculateBalances = (recordsList: LeaveRecord[], editedId?: string) => {
     let currentVl = 0;
     let currentSl = 0;
-    return recordsList.map((rec) => {
-      if (rec.id === editedId || rec.vlManual) {
+    const seenMonths = new Set<string>();
+
+    // 1. Fill missing months before calculating balances
+    if (recordsList.length > 0) {
+      const stdMonths = [
+        { label: 'Jan.', match: 'jan' }, { label: 'Feb.', match: 'feb' },
+        { label: 'Mar.', match: 'mar' }, { label: 'Apr.', match: 'apr' },
+        { label: 'May', match: 'may' }, { label: 'June', match: 'jun' },
+        { label: 'July', match: 'jul' }, { label: 'Aug.', match: 'aug' },
+        { label: 'Sept.', match: 'sep' }, { label: 'Oct.', match: 'oct' },
+        { label: 'Nov.', match: 'nov' }, { label: 'Dec.', match: 'dec' }
+      ];
+      
+      const getMonthIndex = (period: string) => {
+        const p = (period || '').toLowerCase();
+        const idx = stdMonths.findIndex(m => p.includes(m.match));
+        return idx === -1 ? 99 : idx;
+      };
+
+      let minYear = 9999;
+      let maxYear = new Date().getFullYear();
+      recordsList.forEach(r => {
+        const yrMatch = r.period?.match(/\b(20\d{2})\b/);
+        if (yrMatch) {
+          const y = parseInt(yrMatch[1]);
+          if (y < minYear) minYear = y;
+          if (y > maxYear) maxYear = y;
+        }
+      });
+      if (minYear === 9999) minYear = maxYear;
+
+      const currentYear = new Date().getFullYear();
+      const currentMonthIndex = new Date().getMonth();
+
+      const filledRecords: LeaveRecord[] = [];
+      
+      for (let y = minYear; y <= maxYear; y++) {
+        stdMonths.forEach((month, monthIndex) => {
+          const isFuture = y > currentYear || (y === currentYear && monthIndex > currentMonthIndex);
+          if (isFuture) return;
+          
+          // Find all records for this year-month
+          const monthRecords = recordsList.filter(r => {
+            const yrMatch = r.period?.match(/\b(20\d{2})\b/);
+            return yrMatch && parseInt(yrMatch[1]) === y && r.period?.toLowerCase().includes(month.match) && !r.isSeparator && !r.period?.toLowerCase().includes('force');
+          });
+
+          if (monthRecords.length === 0) {
+            // Missing month, inject virtual record
+            filledRecords.push({
+              id: `new-virtual-${y}-${month.match}`,
+              period: `${y} ${month.label}`,
+              particulars: '',
+              vlEarned: '1.25',
+              vlAbsUndWp: '',
+              vlBalance: '',
+              vlAbsUndWop: '',
+              slEarned: '1.25',
+              slAbsUndWp: '',
+              slBalance: '',
+              slAbsUndWop: '',
+              dateAndAction: ''
+            });
+          } else if (monthRecords.length > 1) {
+            // Deduplicate: keep records that have actual data, discard empty filler duplicates
+            const validRecords = monthRecords.filter(r => 
+              (r.particulars && r.particulars.trim() !== '') || 
+              (r.vlAbsUndWp && r.vlAbsUndWp.trim() !== '') || 
+              (r.slAbsUndWp && r.slAbsUndWp.trim() !== '') || 
+              (r.vlAbsUndWop && r.vlAbsUndWop.trim() !== '') || 
+              (r.slAbsUndWop && r.slAbsUndWop.trim() !== '') || 
+              (r.dateAndAction && r.dateAndAction.trim() !== '') ||
+              r.vlManual ||
+              r.slManual ||
+              (r.vlEarned && r.vlEarned !== '1.25' && r.vlEarned !== '') ||
+              (r.slEarned && r.slEarned !== '1.25' && r.slEarned !== '')
+            );
+            if (validRecords.length > 0) {
+              filledRecords.push(...validRecords);
+            } else {
+              // If all are empty, just keep the first one
+              filledRecords.push(monthRecords[0]);
+            }
+          } else {
+            filledRecords.push(monthRecords[0]);
+          }
+        });
+      }
+      
+      // Add back force leave and separators, which don't fit perfectly in the month timeline
+      recordsList.forEach(r => {
+        if (r.isSeparator || r.period?.toLowerCase().includes('force')) {
+           filledRecords.push(r);
+        }
+      });
+
+      // Sort them properly
+      filledRecords.sort((a, b) => {
+        if (a.isSeparator) return -1;
+        if (b.isSeparator) return 1;
+        const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+        const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+        if (aYear !== bYear) return aYear - bYear;
+        return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
+      });
+      
+      recordsList = filledRecords;
+    }
+    
+    return recordsList.map((originalRec, index) => {
+      const rec = { ...originalRec };
+      
+      const getMonthIndex = (period: string) => {
+        const p = (period || '').toLowerCase();
+        const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        const idx = months.findIndex(m => p.includes(m));
+        return idx === -1 ? 99 : idx;
+      };
+      
+      const yearMatch = rec.period?.match(/\b(20\d{2})\b/);
+      const year = yearMatch ? yearMatch[1] : '';
+      const monthIdx = getMonthIndex(rec.period || '');
+      
+      if (year && monthIdx !== 99) {
+        const monthKey = `${year}-${monthIdx}`;
+        if (seenMonths.has(monthKey)) {
+          if (rec.vlEarned === '1.25') rec.vlEarned = '';
+          if (rec.slEarned === '1.25') rec.slEarned = '';
+        }
+        seenMonths.add(monthKey);
+      }
+
+      if (rec.id === editedId || rec.vlManual || (index === 0 && rec.vlManual !== false && rec.vlBalance)) {
         currentVl = parseFloat(rec.vlBalance || '0') || 0;
       } else {
         const vlEarnedStr = rec.vlEarned?.trim() || '';
@@ -120,7 +416,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
         }
       }
 
-      if (rec.id === editedId || rec.slManual) {
+      if (rec.id === editedId || rec.slManual || (index === 0 && rec.slManual !== false && rec.slBalance)) {
         currentSl = parseFloat(rec.slBalance || '0') || 0;
       } else {
         const slEarnedStr = rec.slEarned?.trim() || '';
@@ -138,265 +434,108 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       return rec;
     });
   };
-
   const displayRecords = useMemo(() => {
     let newRecords = [...records];
-    if (!editingCell) return newRecords;
-
-    const { id, field, value: rawValue, year, month } = editingCell;
-    let value = rawValue;
-    if (field === 'particulars') {
-       value = value.replace(/,\s*/g, ', ').trim();
-    }
-
-    if (id.startsWith('new-')) {
-      if (!value.trim()) return newRecords;
-      
-      let newVlAbsUndWp = field === 'vlAbsUndWp' ? value : '';
-      let newSlAbsUndWp = field === 'slAbsUndWp' ? value : '';
-      let newVlAbsUndWop = field === 'vlAbsUndWop' ? value : '';
-      let newSlAbsUndWop = field === 'slAbsUndWop' ? value : '';
-      
+    
+    if (editingCell) {
+      const { id, field, value: rawValue, year, month } = editingCell;
+      let value = rawValue;
       if (field === 'particulars') {
-         const parsed = parseDetailedAbsences(value);
-         if (parsed.vl > 0 || parsed.unknown > 0 || parsed.spl > 0 || parsed.pl > 0 || parsed.fl > 0) {
-            newVlAbsUndWp = (parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl).toString();
-         }
-         if (parsed.sl > 0) {
-            newSlAbsUndWp = parsed.sl.toString();
-         }
-         if (parsed.vl_wop > 0) {
-            newVlAbsUndWop = parsed.vl_wop.toString();
-         }
-         if (parsed.sl_wop > 0) {
-            newSlAbsUndWop = parsed.sl_wop.toString();
-         }
+         value = value.replace(/,\s*/g, ', ').trim();
       }
 
-      const newRec: LeaveRecord = {
-        id: 'lc-' + id,
-        period: field === 'period' ? (value.includes(year.toString()) ? value : `${year} ${value}`) : `${year} ${month}`,
-        particulars: field === 'particulars' ? value : '',
-        vlEarned: field === 'vlEarned' ? value : '1.25',
-        vlAbsUndWp: newVlAbsUndWp,
-        vlBalance: field === 'vlBalance' ? value : '',
-        vlAbsUndWop: newVlAbsUndWop,
-        slEarned: field === 'slEarned' ? value : '1.25',
-        slAbsUndWp: newSlAbsUndWp,
-        slBalance: field === 'slBalance' ? value : '',
-        slAbsUndWop: newSlAbsUndWop,
-        dateAndAction: field === 'dateAndAction' ? value : ''
-      };
-      
-      newRecords.push(newRec);
-      
-      newRecords.sort((a, b) => {
-        if (a.isSeparator) return -1;
-        if (b.isSeparator) return 1;
-        const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
-        const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
-        if (aYear !== bYear) return aYear - bYear;
-        
-        const getMonthIndex = (period: string) => {
-          const p = (period || '').toLowerCase();
-          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-          const idx = months.findIndex(m => p.includes(m));
-          return idx === -1 ? 99 : idx;
-        };
-        return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
-      });
-      
-    } else {
-      newRecords = newRecords.map(r => {
-        if (r.id === id) {
-          let finalValue = value;
-          if (field === 'period' && year && !finalValue.toString().includes(year.toString())) {
-             finalValue = `${year} ${finalValue}`;
-          }
-          const updated = { ...r, [field]: finalValue };
+      if (id.startsWith('new-')) {
+        if (value.trim()) {
+          let newVlAbsUndWp = field === 'vlAbsUndWp' ? value : '';
+          let newSlAbsUndWp = field === 'slAbsUndWp' ? value : '';
+          let newVlAbsUndWop = field === 'vlAbsUndWop' ? value : '';
+          let newSlAbsUndWop = field === 'slAbsUndWop' ? value : '';
           
           if (field === 'particulars') {
-            const parsed = parseDetailedAbsences(finalValue.toString());
-            const vWP = parseFloat(updated.vlAbsUndWp || '0') || 0;
-            const sWP = parseFloat(updated.slAbsUndWp || '0') || 0;
-            const vWOP = parseFloat(updated.vlAbsUndWop || '0') || 0;
-            const sWOP = parseFloat(updated.slAbsUndWop || '0') || 0;
-            
-            const slDays = parsed.sl;
-            const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
-            const vlWopDays = parsed.vl_wop;
-            const slWopDays = parsed.sl_wop;
-
-            if (slDays > 0) {
-                updated.slAbsUndWp = slDays.toString();
-            } else if (slDays === 0) {
-                updated.slAbsUndWp = '';
-            }
-
-            if (slWopDays > 0) {
-                updated.slAbsUndWop = slWopDays.toString();
-            } else if (slWopDays === 0) {
-                updated.slAbsUndWop = '';
-            }
-
-            if (vlDays > 0) {
-                updated.vlAbsUndWp = vlDays.toString();
-            } else if (vlDays === 0) {
-                updated.vlAbsUndWp = '';
-            }
-
-            if (vlWopDays > 0) {
-                updated.vlAbsUndWop = vlWopDays.toString();
-            } else if (vlWopDays === 0) {
-                updated.vlAbsUndWop = '';
-            }
+             const parsed = parseDetailedAbsences(value);
+             if (parsed.vl > 0 || parsed.unknown > 0 || parsed.spl > 0 || parsed.pl > 0 || parsed.fl > 0) {
+                newVlAbsUndWp = (parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl).toString();
+             }
+             if (parsed.sl > 0) {
+                newSlAbsUndWp = parsed.sl.toString();
+             }
+             if (parsed.vl_wop > 0) {
+                newVlAbsUndWop = parsed.vl_wop.toString();
+             }
+             if (parsed.sl_wop > 0) {
+                newSlAbsUndWop = parsed.sl_wop.toString();
+             }
           }
-          if (field === 'vlBalance') updated.vlManual = true;
-          if (field === 'slBalance') updated.slManual = true;
-          if (field === 'vlEarned' || field === 'vlAbsUndWp') updated.vlManual = false;
-          if (field === 'slEarned' || field === 'slAbsUndWp') updated.slManual = false;
-          return updated;
-        }
-        return r;
-      });
-    }
 
-    const isBalanceEdit = field === 'vlBalance' || field === 'slBalance';
-    newRecords = recalculateBalances(newRecords, id.startsWith('new-') ? undefined : (isBalanceEdit ? id : undefined));
-    return newRecords;
-  }, [records, editingCell]);
-
-
-  
-  const handleAddAbsence = (year: number, month: string, leaveType: string, dates: string) => {
-    if (!onSave) return;
-    let newRecords = [...records];
-    const periodMatch = `${year} ${month}`.toLowerCase();
-    
-    // Find or create record for this year and month
-    let existingIdx = newRecords.findIndex(r => 
-        r.period?.toLowerCase() === periodMatch || 
-        (r.period?.toLowerCase().includes(year.toString()) && r.period?.toLowerCase().includes(month.toLowerCase()))
-    );
-
-    let rec: LeaveRecord;
-    if (existingIdx !== -1) {
-        rec = { ...newRecords[existingIdx] };
-    } else {
-        rec = {
-          id: 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7),
-          period: `${year} ${month}`,
-          vlEarned: '1.25',
-          slEarned: '1.25',
-          vlAbsUndWp: '',
-          vlBalance: '',
-          vlAbsUndWop: '',
-          slAbsUndWp: '',
-          slBalance: '',
-          slAbsUndWop: '',
-          dateAndAction: '',
-          particulars: ''
-        };
-    }
-
-    // Append to existing particulars
-    const newEntry = `${leaveType}: ${dates}`;
-    if (rec.particulars && rec.particulars.trim().length > 0) {
-        // If it already has particulars, check if this leaveType exists
-        const regex = new RegExp(`\\b${leaveType}\\s*:\\s*([^VLSAWOPFL]+\\b)`, 'i');
-        const match = rec.particulars.match(regex);
-        if (match) {
-           rec.particulars = rec.particulars.replace(regex, `${leaveType}: ${match[1].trim()}, ${dates}`);
-        } else {
-           rec.particulars = `${rec.particulars} ${newEntry}`.trim();
-        }
-    } else {
-        rec.particulars = newEntry;
-    }
-
-    // Now recalculate WOP/WP based on new particulars
-    const parsed = parseDetailedAbsences(rec.particulars);
-    const slDays = parsed.sl;
-    const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
-    const vlWopDays = parsed.vl_wop;
-    const slWopDays = parsed.sl_wop;
-
-    if (slDays > 0) {
-        rec.slAbsUndWp = slDays.toString();
-    } else if (slDays === 0) {
-        rec.slAbsUndWp = '';
-    }
-
-    if (slWopDays > 0) {
-        rec.slAbsUndWop = slWopDays.toString();
-    } else if (slWopDays === 0) {
-        rec.slAbsUndWop = '';
-    }
-
-    if (vlDays > 0) {
-        rec.vlAbsUndWp = vlDays.toString();
-    } else if (vlDays === 0) {
-        rec.vlAbsUndWp = '';
-    }
-
-    if (vlWopDays > 0) {
-        rec.vlAbsUndWop = vlWopDays.toString();
-    } else if (vlWopDays === 0) {
-        rec.vlAbsUndWop = '';
-    }
-    
-    // Sort logic (can just append and sort or replace)
-    if (existingIdx !== -1) {
-        newRecords[existingIdx] = rec;
-    } else {
-        newRecords.push(rec);
-        newRecords.sort((a, b) => {
-          if (a.isSeparator) return -1;
-          if (b.isSeparator) return 1;
-          const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
-          const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
-          if (aYear !== bYear) return aYear - bYear;
-          const getMonthIndex = (period: string) => {
-            const p = (period || '').toLowerCase();
-            const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-            const idx = months.findIndex(m => p.includes(m));
-            return idx === -1 ? 99 : idx;
+          const newRec: LeaveRecord = {
+            id: 'lc-' + id,
+            period: field === 'period' ? (value.includes(year!.toString()) ? value : `${year} ${value}`) : `${year} ${month}`,
+            particulars: field === 'particulars' ? value : '',
+            vlEarned: field === 'vlEarned' ? value : '1.25',
+            vlAbsUndWp: newVlAbsUndWp,
+            vlBalance: field === 'vlBalance' ? value : '',
+            vlManual: field === 'vlBalance',
+            vlAbsUndWop: newVlAbsUndWop,
+            slEarned: field === 'slEarned' ? value : '1.25',
+            slAbsUndWp: newSlAbsUndWp,
+            slBalance: field === 'slBalance' ? value : '',
+            slManual: field === 'slBalance',
+            slAbsUndWop: newSlAbsUndWop,
+            dateAndAction: field === 'dateAndAction' ? value : ''
           };
-          return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
-        });
-    }
-
-    newRecords = recalculateBalances(newRecords);
-    onSave({ ...employee, leaveRecords: newRecords });
-    setIsAddAbsenceOpen(false);
-  };
-
-  const handleFillStandardYear = (yearToFill: number) => {
-    if (!onSave) return;
-    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    let newRecords = [...records];
-    
-    monthsList.forEach(m => {
-      const existing = newRecords.find(r => r.period?.includes(yearToFill.toString()) && r.period?.toLowerCase().includes(m.toLowerCase()));
-      if (!existing) {
-        newRecords.push({
-          id: 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7),
-          period: `${yearToFill} ${m}`,
-          vlEarned: '1.25',
-          slEarned: '1.25',
-          vlAbsUndWp: '',
-          vlBalance: '',
-          vlAbsUndWop: '',
-          slAbsUndWp: '',
-          slBalance: '',
-          slAbsUndWop: '',
-          dateAndAction: ''
-        });
+          
+          newRecords.push(newRec);
+        }
       } else {
-        if (!existing.vlEarned) existing.vlEarned = '1.25';
-        if (!existing.slEarned) existing.slEarned = '1.25';
+        newRecords = newRecords.map(r => {
+          if (r.id === id || r.id === `lc-${id}`) {
+            let finalValue = value;
+            if (field === 'period' && year && !finalValue.toString().includes(year.toString())) {
+               finalValue = `${year} ${finalValue}`;
+            }
+            const updated = { ...r, [field]: finalValue };
+            
+            if (field === 'vlBalance') updated.vlManual = finalValue.toString().trim() !== '';
+            if (field === 'slBalance') updated.slManual = finalValue.toString().trim() !== '';
+            
+            if (field === 'particulars') {
+              const parsed = parseDetailedAbsences(finalValue.toString());
+              const slDays = parsed.sl;
+              const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
+              const vlWopDays = parsed.vl_wop;
+              const slWopDays = parsed.sl_wop;
+              
+              if (slDays > 0) {
+                  updated.slAbsUndWp = slDays.toString();
+              } else if (slDays === 0) {
+                  updated.slAbsUndWp = '';
+              }
+              if (slWopDays > 0) {
+                  updated.slAbsUndWop = slWopDays.toString();
+              } else if (slWopDays === 0) {
+                  updated.slAbsUndWop = '';
+              }
+              if (vlDays > 0) {
+                  updated.vlAbsUndWp = vlDays.toString();
+              } else if (vlDays === 0) {
+                  updated.vlAbsUndWp = '';
+              }
+              if (vlWopDays > 0) {
+                  updated.vlAbsUndWop = vlWopDays.toString();
+              } else if (vlWopDays === 0) {
+                  updated.vlAbsUndWop = '';
+              }
+            }
+            if (field === 'vlBalance') updated.vlManual = true;
+            if (field === 'slBalance') updated.slManual = true;
+            if (field === 'vlEarned' || field === 'vlAbsUndWp') updated.vlManual = false;
+            if (field === 'slEarned' || field === 'slAbsUndWp') updated.slManual = false;
+            return updated;
+          }
+          return r;
+        });
       }
-    });
+    }
 
     newRecords.sort((a, b) => {
       if (a.isSeparator) return -1;
@@ -414,47 +553,12 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
     });
 
-    newRecords = recalculateBalances(newRecords);
-    onSave({ ...employee, leaveRecords: newRecords });
-  };
-
-  const exportToCSV = () => {
-    const headers = [
-      'Period', 'Particulars', 'VL Earned', 'VL Abs/Und w/P', 'VL Balance', 'VL Abs/Und w/o P',
-      'SL Earned', 'SL Abs/Und w/P', 'SL Balance', 'SL Abs/Und w/o P', 'Date and Action'
-    ];
+    const isBalanceEdit = editingCell ? (editingCell.field === 'vlBalance' || editingCell.field === 'slBalance') : false;
+    const editedId = editingCell && !editingCell.id.startsWith('new-') && isBalanceEdit ? editingCell.id : undefined;
+    newRecords = recalculateBalances(newRecords, editedId);
     
-    const rows = records.map(r => {
-      if (r.isSeparator) return ['--- SEPARATOR ---'];
-      return [
-        r.period || '',
-        r.particulars || '',
-        r.vlEarned || '',
-        r.vlAbsUndWp || '',
-        r.vlBalance || '',
-        r.vlAbsUndWop || '',
-        r.slEarned || '',
-        r.slAbsUndWp || '',
-        r.slBalance || '',
-        r.slAbsUndWop || '',
-        r.dateAndAction || ''
-      ];
-    });
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${employee.surname || 'Employee'}_Leave_Card.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    return newRecords;
+  }, [records, editingCell]);
 
   const saveEdit = (nextCell?: EditingCell | null) => {
     if (!editingCell || !onSave) {
@@ -472,6 +576,14 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     }
 
     if (!id.startsWith('new-')) {
+       if (field === 'period' && !value.trim()) {
+           // Delete the record
+           let filteredRecords = displayRecords.filter(r => r.id !== id && r.id !== `lc-${id}`);
+           filteredRecords = recalculateBalances(filteredRecords);
+           onSave({ ...employee, leaveRecords: filteredRecords });
+           setEditingCell(null);
+           return;
+       }
        const existing = records.find(r => r.id === id);
        if (existing && existing[field] === value) {
          if (nextCell !== undefined) setEditingCell(nextCell);
@@ -509,7 +621,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     align: 'left' | 'center' | 'right' = 'center'
   ) => {
     const id = rec ? rec.id : `new-${year}-${monthMatch}`;
-    const isEditing = editingCell?.id === id && editingCell?.field === field;
+    const isEditing = (editingCell?.id === id || (editingCell?.id.startsWith('new-') && id === `lc-${editingCell.id}`)) && editingCell?.field === field;
 
     const handleDoubleClick = () => {
       if (!onSave) return;
@@ -606,8 +718,13 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             className={`w-full text-${align} border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1`}
             value={editingCell.value}
             onChange={e => setEditingCell({ ...editingCell, value: e.target.value })}
-            onBlur={() => saveEdit()}
+            onBlur={(e) => {
+               // Only save if we are not clicking another cell inside the table
+               // Actually, onBlur is fine, just save it.
+               saveEdit();
+            }}
             onKeyDown={handleKeyDown}
+            onFocus={(e) => e.target.select()}
             placeholder={placeholder}
           />
         </td>
@@ -635,8 +752,6 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     startYear = Math.min(...yearsInRecords);
   }
 
-  const currentYear = new Date().getFullYear();
-  const currentMonthIndex = new Date().getMonth();
 
   const targetYears = [];
   for (let y = startYear; y <= Math.max(startYear, currentYear); y++) {
@@ -668,6 +783,9 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
         <div>
           <h2 className="font-playfair text-2xl font-bold uppercase tracking-tight text-[var(--navy)]">Leave Card</h2>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Official Leave Records & Salary Calculation</p>
+          {firstAppointmentDate && (
+            <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mt-1">Date of First Appointment: {firstAppointmentDate}</p>
+          )}
           {onSave && <p className="text-blue-500 font-bold tracking-tight text-xs mt-2 italic">Double-click any cell to edit</p>}
         </div>
         <div className="flex gap-4 items-end">
@@ -765,11 +883,12 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
                 stdMonths.forEach((month, monthIndex) => {
                   const isFuture = year > currentYear || (year === currentYear && monthIndex > currentMonthIndex);
-                  const matched = yearRecords.filter(r => r.period?.toLowerCase().includes(month.match) && !r.isSeparator);
+                  const forceLeaveRecId = yearRecords.find(r => r.period?.toLowerCase().includes('force'))?.id;
+                  const matched = yearRecords.filter(r => r.period?.toLowerCase().includes(month.match) && !r.isSeparator && r.id !== forceLeaveRecId);
                   
                   matched.forEach(rec => matchedIds.add(rec.id));
                   
-                  if (matched.length > 0 && !isFuture) {
+                  if (matched.length > 0) {
                     matched.forEach(rec => {
                       let displayPeriod = rec.period || '';
                       if (displayPeriod.toLowerCase() === `${year} ${month.match}` || displayPeriod.toLowerCase() === `${year} ${month.label.toLowerCase()}`) {
@@ -781,8 +900,9 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                       
                       const totalDeduction = calculateDeduction(rec.vlAbsUndWop) + calculateDeduction(rec.slAbsUndWop);
 
+                      const rowKey = rec.id.startsWith('lc-new-') ? `empty-${year}-${month.match}` : rec.id;
                       rows.push(
-                        <tr key={rec.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                        <tr key={rowKey} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                           {renderEditableCell(rec, year, month.match, month.label, 'period', displayPeriod, "px-4 py-3 border-r border-slate-200 font-bold whitespace-nowrap", "left")}
                           {renderEditableCell(rec, year, month.match, month.label, 'particulars', rec.particulars, "px-4 py-3 border-r border-slate-200 text-sm text-slate-700 whitespace-nowrap", "left")}
                           {renderEditableCell(rec, year, month.match, month.label, 'vlEarned', rec.vlEarned, "px-2 py-3 border-r border-slate-100 text-center")}
@@ -804,16 +924,21 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                       );
                     });
                   } else {
+                    const rowClass = isFuture 
+                       ? "border-b border-slate-100 opacity-50 hover:opacity-100 hover:bg-slate-50/50 transition-all" 
+                       : "border-b border-slate-100 hover:bg-slate-50/50 transition-all bg-white";
+                    
+                    const earned = isFuture ? '' : '1.25';
                     rows.push(
-                      <tr key={`empty-${year}-${month.match}`} className="border-b border-slate-100 opacity-50 hover:opacity-100 hover:bg-slate-50/50 transition-all">
+                      <tr key={`empty-${year}-${month.match}`} className={rowClass}>
                         {renderEditableCell(null, year, month.match, month.label, 'period', month.label, "px-4 py-3 border-r border-slate-200 font-medium whitespace-nowrap text-slate-400", "left")}
                         {renderEditableCell(null, year, month.match, month.label, 'particulars', '', "px-4 py-3 border-r border-slate-200 text-sm text-slate-400 whitespace-nowrap", "left")}
-                        {renderEditableCell(null, year, month.match, month.label, 'vlEarned', '', "px-2 py-3 border-r border-slate-100 text-center")}
+                        {renderEditableCell(null, year, month.match, month.label, 'vlEarned', earned, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlAbsUndWp', '', "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlBalance', '', "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}
                         {renderEditableCell(null, year, month.match, month.label, 'vlAbsUndWop', '', "px-2 py-3 border-r border-slate-200 text-center font-bold text-red-500 bg-red-50/10")}
                         
-                        {renderEditableCell(null, year, month.match, month.label, 'slEarned', '', "px-2 py-3 border-r border-slate-100 text-center")}
+                        {renderEditableCell(null, year, month.match, month.label, 'slEarned', earned, "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'slAbsUndWp', '', "px-2 py-3 border-r border-slate-100 text-center")}
                         {renderEditableCell(null, year, month.match, month.label, 'slBalance', '', "px-2 py-3 border-r border-slate-100 text-center font-bold text-[var(--navy)]")}
                         {renderEditableCell(null, year, month.match, month.label, 'slAbsUndWop', '', "px-2 py-3 border-r border-slate-200 text-center font-bold text-red-500 bg-red-50/10")}
@@ -830,7 +955,8 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
                 if (forceLeaveRec) matchedIds.add(forceLeaveRec.id);
 
                 yearRecords.forEach(rec => {
-                  if (!matchedIds.has(rec.id) && !rec.isSeparator) {
+                  const forceLeaveRecId = yearRecords.find(r => r.period?.toLowerCase().includes('force'))?.id;
+                  if (!matchedIds.has(rec.id) && !rec.isSeparator && rec.id !== forceLeaveRecId) {
                     const totalDeduction = calculateDeduction(rec.vlAbsUndWop) + calculateDeduction(rec.slAbsUndWop);
                     rows.push(
                       <tr key={rec.id} className="border-b border-slate-100 bg-blue-50/20 hover:bg-slate-50/50 transition-colors">

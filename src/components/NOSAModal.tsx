@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Employee } from '../types/employee';
 import { X, Printer, Calculator } from 'lucide-react';
+import { getResolvedLatestRecord } from '../utils/helpers';
 import { motion } from 'motion/react';
 
 interface Props {
@@ -12,11 +13,11 @@ interface Props {
 export default function NOSAModal({ employee, onClose, onSave }: Props) {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>('');
   const latestService = employee.serviceRecords.length > 0 
-    ? employee.serviceRecords[employee.serviceRecords.length - 1] 
+    ? getResolvedLatestRecord(employee.serviceRecords)
     : null;
 
   const [dateOfNotice, setDateOfNotice] = useState(new Date().toISOString().split('T')[0]);
-  const [mayorName, setMayorName] = useState('RICOMATA LARGO, JR.');
+  const [mayorName, setMayorName] = useState('LEODEGARIO A. LABAO JR.');
   
   const [oldSg, setOldSg] = useState('24');
   const [oldStep, setOldStep] = useState('2');

@@ -1,13 +1,17 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-const LeaveTrendsChart = lazy(() => import('./LeaveTrendsChart'));
+
 import { Employee, Attachment } from '../types/employee';
 import { Printer, Edit, Trash2, X, FileText, History, Users, ShieldCheck, MapPin, Phone, Mail, Calendar, Download, ArrowLeft, FileUp, Eye, ZoomIn, Cloud, Loader2, ExternalLink, Calculator, AlertTriangle } from 'lucide-react';
-import { lazy, Suspense } from 'react';
-const NOSAModal = lazy(() => import('./NOSAModal'));
-const LeaveCardViewer = lazy(() => import('./LeaveCardViewer'));
+
+
 import { motion, AnimatePresence } from 'motion/react';
 import { downloadFileFromDrive as downloadFileFromGDrive, deleteFileFromDrive } from '../services/driveStorage';
+
+const LeaveTrendsChart = lazy(() => import('./LeaveTrendsChart'));
+const NOSAModal = lazy(() => import('./NOSAModal'));
+const LeaveCardViewer = lazy(() => import('./LeaveCardViewer'));
 const PreviewModal = lazy(() => import('./PreviewModal').then(module => ({ default: module.PreviewModal })));
+
 
 interface Props {
   employee: Employee;

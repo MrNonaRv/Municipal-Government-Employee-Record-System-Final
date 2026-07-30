@@ -1,5 +1,5 @@
 const parseDetailedAbsences = (text) => {
-  if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   
   const parseChunk = (chunk) => {
     let days = 0;
@@ -35,21 +35,22 @@ const parseDetailedAbsences = (text) => {
     return days;
   };
 
-  const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   const upperText = text.toUpperCase();
   
-  if (!/(VL|SL|FL|PL|SPL)\s*:/.test(upperText)) {
+  if (!/(VL WOP|SL WOP|AWOL|LWOP|WOP|VL|SL|FL|PL|SPL)\s*:/.test(upperText)) {
       result.unknown = parseChunk(text);
       return result;
   }
 
-  const parts = upperText.split(/(VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
+  const parts = upperText.split(/(VL WOP|SL WOP|AWOL|LWOP|WOP|VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
   
   let currentType = 'unknown';
   for (let i = 0; i < parts.length; i++) {
      const p = parts[i].trim();
-     if (['VL', 'SL', 'FL', 'PL', 'SPL'].includes(p)) {
-         currentType = p.toLowerCase();
+     if (['VL WOP', 'SL WOP', 'AWOL', 'LWOP', 'WOP', 'VL', 'SL', 'FL', 'PL', 'SPL'].includes(p)) {
+         currentType = p.toLowerCase().replace(' ', '_');
+         if (currentType === 'awol' || currentType === 'lwop' || currentType === 'wop') currentType = 'vl_wop';
      } else {
          result[currentType] += parseChunk(p);
      }
@@ -58,6 +59,6 @@ const parseDetailedAbsences = (text) => {
 };
 
 console.log(parseDetailedAbsences("SL: 1, 2, 3 VL: 4, 5, 6"));
-console.log(parseDetailedAbsences("SPL: 1-5"));
-console.log(parseDetailedAbsences("1, 2, 3"));
-console.log(parseDetailedAbsences("SL: 1, 2 half, 3"));
+console.log(parseDetailedAbsences("AWOL: 1-5"));
+console.log(parseDetailedAbsences("SL WOP: 1, 2"));
+console.log(parseDetailedAbsences("LWOP: 3"));

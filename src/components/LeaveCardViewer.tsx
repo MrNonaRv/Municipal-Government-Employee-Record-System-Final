@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Employee, LeaveRecord } from '../types/employee';
-import { Printer, Plus, Download } from 'lucide-react';
+import { Printer, Plus, Download, Calendar } from 'lucide-react';
 import LeaveCardPrintModal from './LeaveCardPrintModal';
+import AddAbsenceModal from './AddAbsenceModal';
 
 interface Props {
   employee: Employee;
@@ -18,7 +19,7 @@ interface EditingCell {
 
 
 const parseDetailedAbsences = (text: string) => {
-  if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  if (!text || !text.trim()) return { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   
   const parseChunk = (chunk: string) => {
     let days = 0;
@@ -54,21 +55,22 @@ const parseDetailedAbsences = (text: string) => {
     return days;
   };
 
-  const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, unknown: 0 };
+  const result = { vl: 0, sl: 0, fl: 0, pl: 0, spl: 0, vl_wop: 0, sl_wop: 0, unknown: 0 };
   const upperText = text.toUpperCase();
   
-  if (!/(VL|SL|FL|PL|SPL)\s*:/.test(upperText)) {
+  if (!/(VL WOP|SL WOP|AWOL|LWOP|WOP|VL|SL|FL|PL|SPL)\s*:/.test(upperText)) {
       result.unknown = parseChunk(text);
       return result;
   }
 
-  const parts = upperText.split(/(VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
+  const parts = upperText.split(/(VL WOP|SL WOP|AWOL|LWOP|WOP|VL|SL|FL|PL|SPL)\s*:/).filter(Boolean);
   
   let currentType = 'unknown';
   for (let i = 0; i < parts.length; i++) {
      const p = parts[i].trim();
-     if (['VL', 'SL', 'FL', 'PL', 'SPL'].includes(p)) {
-         currentType = p.toLowerCase();
+     if (['VL WOP', 'SL WOP', 'AWOL', 'LWOP', 'WOP', 'VL', 'SL', 'FL', 'PL', 'SPL'].includes(p)) {
+         currentType = p.toLowerCase().replace(' ', '_');
+         if (currentType === 'awol' || currentType === 'lwop' || currentType === 'wop') currentType = 'vl_wop';
      } else {
          (result as any)[currentType] += parseChunk(p);
      }
@@ -88,6 +90,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
   const dailyRate = latestSalary / 22;
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [isAddAbsenceOpen, setIsAddAbsenceOpen] = useState(false);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [extraYears, setExtraYears] = useState<number[]>([]);
   const [addYearInput, setAddYearInput] = useState('');
@@ -151,6 +154,9 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
       
       let newVlAbsUndWp = field === 'vlAbsUndWp' ? value : '';
       let newSlAbsUndWp = field === 'slAbsUndWp' ? value : '';
+      let newVlAbsUndWop = field === 'vlAbsUndWop' ? value : '';
+      let newSlAbsUndWop = field === 'slAbsUndWop' ? value : '';
+      
       if (field === 'particulars') {
          const parsed = parseDetailedAbsences(value);
          if (parsed.vl > 0 || parsed.unknown > 0 || parsed.spl > 0 || parsed.pl > 0 || parsed.fl > 0) {
@@ -158,6 +164,12 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
          }
          if (parsed.sl > 0) {
             newSlAbsUndWp = parsed.sl.toString();
+         }
+         if (parsed.vl_wop > 0) {
+            newVlAbsUndWop = parsed.vl_wop.toString();
+         }
+         if (parsed.sl_wop > 0) {
+            newSlAbsUndWop = parsed.sl_wop.toString();
          }
       }
 
@@ -168,11 +180,11 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
         vlEarned: field === 'vlEarned' ? value : '1.25',
         vlAbsUndWp: newVlAbsUndWp,
         vlBalance: field === 'vlBalance' ? value : '',
-        vlAbsUndWop: field === 'vlAbsUndWop' ? value : '',
+        vlAbsUndWop: newVlAbsUndWop,
         slEarned: field === 'slEarned' ? value : '1.25',
         slAbsUndWp: newSlAbsUndWp,
         slBalance: field === 'slBalance' ? value : '',
-        slAbsUndWop: field === 'slAbsUndWop' ? value : '',
+        slAbsUndWop: newSlAbsUndWop,
         dateAndAction: field === 'dateAndAction' ? value : ''
       };
       
@@ -212,20 +224,30 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             
             const slDays = parsed.sl;
             const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
+            const vlWopDays = parsed.vl_wop;
+            const slWopDays = parsed.sl_wop;
 
             if (slDays > 0) {
-                if (sWOP > 0) updated.slAbsUndWop = slDays.toString();
-                else updated.slAbsUndWp = slDays.toString();
+                updated.slAbsUndWp = slDays.toString();
             } else if (slDays === 0) {
                 updated.slAbsUndWp = '';
+            }
+
+            if (slWopDays > 0) {
+                updated.slAbsUndWop = slWopDays.toString();
+            } else if (slWopDays === 0) {
                 updated.slAbsUndWop = '';
             }
 
             if (vlDays > 0) {
-                if (vWOP > 0) updated.vlAbsUndWop = vlDays.toString();
-                else updated.vlAbsUndWp = vlDays.toString();
+                updated.vlAbsUndWp = vlDays.toString();
             } else if (vlDays === 0) {
                 updated.vlAbsUndWp = '';
+            }
+
+            if (vlWopDays > 0) {
+                updated.vlAbsUndWop = vlWopDays.toString();
+            } else if (vlWopDays === 0) {
                 updated.vlAbsUndWop = '';
             }
           }
@@ -244,6 +266,110 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     return newRecords;
   }, [records, editingCell]);
 
+
+  
+  const handleAddAbsence = (year: number, month: string, leaveType: string, dates: string) => {
+    if (!onSave) return;
+    let newRecords = [...records];
+    const periodMatch = `${year} ${month}`.toLowerCase();
+    
+    // Find or create record for this year and month
+    let existingIdx = newRecords.findIndex(r => 
+        r.period?.toLowerCase() === periodMatch || 
+        (r.period?.toLowerCase().includes(year.toString()) && r.period?.toLowerCase().includes(month.toLowerCase()))
+    );
+
+    let rec: LeaveRecord;
+    if (existingIdx !== -1) {
+        rec = { ...newRecords[existingIdx] };
+    } else {
+        rec = {
+          id: 'lc-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7),
+          period: `${year} ${month}`,
+          vlEarned: '1.25',
+          slEarned: '1.25',
+          vlAbsUndWp: '',
+          vlBalance: '',
+          vlAbsUndWop: '',
+          slAbsUndWp: '',
+          slBalance: '',
+          slAbsUndWop: '',
+          dateAndAction: '',
+          particulars: ''
+        };
+    }
+
+    // Append to existing particulars
+    const newEntry = `${leaveType}: ${dates}`;
+    if (rec.particulars && rec.particulars.trim().length > 0) {
+        // If it already has particulars, check if this leaveType exists
+        const regex = new RegExp(`\\b${leaveType}\\s*:\\s*([^VLSAWOPFL]+\\b)`, 'i');
+        const match = rec.particulars.match(regex);
+        if (match) {
+           rec.particulars = rec.particulars.replace(regex, `${leaveType}: ${match[1].trim()}, ${dates}`);
+        } else {
+           rec.particulars = `${rec.particulars} ${newEntry}`.trim();
+        }
+    } else {
+        rec.particulars = newEntry;
+    }
+
+    // Now recalculate WOP/WP based on new particulars
+    const parsed = parseDetailedAbsences(rec.particulars);
+    const slDays = parsed.sl;
+    const vlDays = parsed.vl + parsed.unknown + parsed.spl + parsed.pl + parsed.fl;
+    const vlWopDays = parsed.vl_wop;
+    const slWopDays = parsed.sl_wop;
+
+    if (slDays > 0) {
+        rec.slAbsUndWp = slDays.toString();
+    } else if (slDays === 0) {
+        rec.slAbsUndWp = '';
+    }
+
+    if (slWopDays > 0) {
+        rec.slAbsUndWop = slWopDays.toString();
+    } else if (slWopDays === 0) {
+        rec.slAbsUndWop = '';
+    }
+
+    if (vlDays > 0) {
+        rec.vlAbsUndWp = vlDays.toString();
+    } else if (vlDays === 0) {
+        rec.vlAbsUndWp = '';
+    }
+
+    if (vlWopDays > 0) {
+        rec.vlAbsUndWop = vlWopDays.toString();
+    } else if (vlWopDays === 0) {
+        rec.vlAbsUndWop = '';
+    }
+    
+    // Sort logic (can just append and sort or replace)
+    if (existingIdx !== -1) {
+        newRecords[existingIdx] = rec;
+    } else {
+        newRecords.push(rec);
+        newRecords.sort((a, b) => {
+          if (a.isSeparator) return -1;
+          if (b.isSeparator) return 1;
+          const aYear = parseInt(a.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+          const bYear = parseInt(b.period?.match(/\b(20\d{2})\b/)?.[1] || '0');
+          if (aYear !== bYear) return aYear - bYear;
+          const getMonthIndex = (period: string) => {
+            const p = (period || '').toLowerCase();
+            const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+            const idx = months.findIndex(m => p.includes(m));
+            return idx === -1 ? 99 : idx;
+          };
+          return getMonthIndex(a.period || '') - getMonthIndex(b.period || '');
+        });
+    }
+
+    newRecords = recalculateBalances(newRecords);
+    onSave({ ...employee, leaveRecords: newRecords });
+    setIsAddAbsenceOpen(false);
+  };
 
   const handleFillStandardYear = (yearToFill: number) => {
     if (!onSave) return;
@@ -470,7 +596,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
 
     if (isEditing) {
       let placeholder = '';
-      if (field === 'particulars') placeholder = 'e.g. SL: 1,2,3 VL: 4,5,6';
+      if (field === 'particulars') placeholder = 'e.g. VL: 1 SL: 2 AWOL: 3';
       
       return (
         <td className={className}>
@@ -545,6 +671,14 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           {onSave && <p className="text-blue-500 font-bold tracking-tight text-xs mt-2 italic">Double-click any cell to edit</p>}
         </div>
         <div className="flex gap-4 items-end">
+          {onSave && (
+            <button
+              onClick={() => setIsAddAbsenceOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-bold uppercase tracking-widest text-[10px] rounded-lg hover:bg-blue-700 transition-colors h-[52px]"
+            >
+              <Calendar size={16} /> Add Leave Entry
+            </button>
+          )}
           {onSave && (
             <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden h-[52px]">
               <input
@@ -768,6 +902,12 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           </table>
         )}
       </div>
+            {isAddAbsenceOpen && (
+        <AddAbsenceModal 
+          onClose={() => setIsAddAbsenceOpen(false)} 
+          onSave={handleAddAbsence} 
+        />
+      )}
       {isPrintOpen && (
         <LeaveCardPrintModal employee={employee} onClose={() => setIsPrintOpen(false)} />
       )}

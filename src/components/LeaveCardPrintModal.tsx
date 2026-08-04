@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Printer } from 'lucide-react';
 import { Employee } from '../types/employee';
+import { getResolvedLatestRecord } from '../utils/helpers';
 
 interface Props {
   employee: Employee;
@@ -14,9 +15,11 @@ export default function LeaveCardPrintModal({ employee, onClose }: Props) {
     ? employee.serviceRecords[0].from 
     : '';
 
-  const office = employee.serviceRecords && employee.serviceRecords.length > 0 
-    ? employee.serviceRecords[employee.serviceRecords.length - 1].station 
-    : '';
+  const latestResolvedSR = employee.serviceRecords && employee.serviceRecords.length > 0
+    ? getResolvedLatestRecord(employee.serviceRecords)
+    : null;
+
+  const office = latestResolvedSR?.station || '';
 
   const handlePrint = () => {
     window.print();

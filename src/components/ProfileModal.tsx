@@ -1171,32 +1171,34 @@ export default function ProfileModal({
             </table>
           </div>
 
-          <div className="text-center text-[10px] italic mb-12">
-            Issued in compliance with Executive Order No. 54 dated August 10,
-            1954, and in accordance with
-            <br />
-            Circular No. 58 dated August 10, 1954 of the System.
-          </div>
-
-          <div className="flex justify-end items-end pr-12">
-            <div className="text-center relative">
-              <div className="text-[11px] font-bold text-left mb-6 absolute -left-32 top-0">
-                CERTIFIED CORRECT:
-              </div>
-              <div className="w-48 border-b border-black mb-1 mx-auto relative z-10">
-                {/* Signature would go here */}
-              </div>
-              <div className="font-bold text-[11px] mt-8">BIO C. GARCIA</div>
-              <div className="text-[10px]">Administrative Officer V</div>
+          <div className="break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+            <div className="text-center text-[10px] italic mb-12 mt-8">
+              Issued in compliance with Executive Order No. 54 dated August 10,
+              1954, and in accordance with
+              <br />
+              Circular No. 58 dated August 10, 1954 of the System.
             </div>
-          </div>
 
-          <div className="mt-8 text-[11px]">
-            {new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            <div className="flex justify-end items-end pr-12">
+              <div className="text-center relative">
+                <div className="text-[11px] font-bold text-left mb-6 absolute -left-32 top-0">
+                  CERTIFIED CORRECT:
+                </div>
+                <div className="w-48 border-b border-black mb-1 mx-auto relative z-10">
+                  {/* Signature would go here */}
+                </div>
+                <div className="font-bold text-[11px] mt-8">BIO C. GARCIA</div>
+                <div className="text-[10px]">Administrative Officer V</div>
+              </div>
+            </div>
+
+            <div className="mt-8 text-[11px]">
+              {new Date().toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
           </div>
         </div>
 

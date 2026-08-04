@@ -243,7 +243,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     return parseFloat(salaryStr);
   }, [employee.serviceRecords]);
 
-  const dailyRate = latestSalary / 22;
+  const dailyRate = (latestSalary / 12) / 22;
 
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [isAddAbsenceOpen, setIsAddAbsenceOpen] = useState(false);
@@ -834,7 +834,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
             <Printer size={16} /> Print CSC Form 14
           </button>
           <div className="text-right bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-1">Base Monthly Salary</p>
+            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-1">Base Annual Salary</p>
           <p className="font-mono font-bold text-lg text-slate-800">₱{latestSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p className="text-[9px] uppercase font-bold text-slate-400 mt-1">Est. Daily Rate: ₱{dailyRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>

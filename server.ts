@@ -180,7 +180,7 @@ async function loadDb() {
   }
 
   // Now, try loading from Firestore (if initialized)
-  if (firestoreDb) {
+  if (firestoreDb && isFallbackActive()) {
     try {
       console.log('[Firebase] Loading records from Firestore "app_data" collection...');
       const querySnapshot = await getDocs(collection(firestoreDb, 'app_data'));
@@ -321,7 +321,7 @@ async function seedRealEmployeesIfNeeded() {
         console.log(`[Seed] Successfully seeded ${recordsToSeed.length} real employee records.`);
         
         // Sync the newly seeded records to Firestore immediately
-        await syncDrizzleToFirestore();
+        syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
       } else {
         console.log('[Seed] No matching employee records found in database.json.');
       }
@@ -443,7 +443,7 @@ async function ensureDbLoaded() {
     // If we are in AI Studio, ensure our local state is pushed to Firestore
     if (!process.env.VERCEL) {
       console.log('[DB] Running in AI Studio, triggering proactive sync to Firestore...');
-      await syncDrizzleToFirestore();
+      syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
     }
   } catch (err) {
     console.error('[DB] Critical error during database initialization:', err);
@@ -768,7 +768,7 @@ app.post('/api/employees/chunk', async (req, res) => {
         });
       }
       
-      await syncDrizzleToFirestore();
+      syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
       return res.json({ success: true, completed: true });
     } else {
       return res.json({ success: true, completed: false, received: receivedCount });
@@ -885,7 +885,7 @@ app.post('/api/employees', async (req, res) => {
       });
     }
 
-    await syncDrizzleToFirestore();
+    syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
     res.json({ success: true });
   } catch (error: any) {
     console.error(error);
@@ -902,7 +902,7 @@ app.delete('/api/employees/:id', async (req, res) => {
     const id = req.params.id;
     await db.delete(employees).where(eq(employees.originalId, id));
 
-    await syncDrizzleToFirestore();
+    syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
     res.json({ success: true });
   } catch (error: any) {
     console.error(error);
@@ -919,7 +919,7 @@ app.post('/api/employees/clear-all', async (req, res) => {
     const dummyUser = await getDummyUser();
     await db.delete(employees).where(eq(employees.userId, dummyUser.id));
 
-    await syncDrizzleToFirestore();
+    syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
     res.json({ success: true });
   } catch (error: any) {
     console.error('Failed to clear all data:', error);

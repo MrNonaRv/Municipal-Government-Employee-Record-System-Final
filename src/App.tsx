@@ -408,14 +408,14 @@ export default function App() {
   };
 
   const handleSave = async (emp: Employee, isAutosave = false, skipDuplicateCheck = false) => {
-    if (!isAutosave && !skipDuplicateCheck) {
-      const isNewOrNameChanged = true;
+    if (!skipDuplicateCheck) {
       const duplicate = employees.find(e => 
         e.id !== emp.id && 
         e.firstName.trim().toLowerCase() === emp.firstName.trim().toLowerCase() && 
         e.surname.trim().toLowerCase() === emp.surname.trim().toLowerCase()
       );
       if (duplicate) {
+        if (isAutosave) return;
         setDuplicateEmpToSave(emp);
         return;
       }
@@ -844,25 +844,38 @@ export default function App() {
             initialTab={csvModalTab}
             onClose={() => setIsCSVModalOpen(false)} 
             onImport={async (imported) => {
+              // Deduplicate against existing employees based on first and last name
+              // if the imported record doesn't have an ID that already exists.
+              const finalImported = imported.map(imp => {
+                const existing = employees.find(e => 
+                  (e.id === imp.id) || 
+                  (e.firstName.trim().toLowerCase() === imp.firstName.trim().toLowerCase() && 
+                   e.surname.trim().toLowerCase() === imp.surname.trim().toLowerCase())
+                );
+                if (existing) {
+                  return { ...imp, id: existing.id }; // Update existing record
+                }
+                return imp; // Create new record
+              });
+
               // Log the bulk import action
               addActivityLog({
                 actionType: 'IMPORT',
-                message: `Bulk imported ${imported.length} employee records`,
+                message: `Bulk imported ${finalImported.length} employee records`,
                 details: {
                   employeeName: 'System Bulk Action',
-                  changes: [`Imported ${imported.length} dossiers and initiated database updates.`]
+                  changes: [`Imported ${finalImported.length} dossiers and initiated database updates.`]
                 }
               });
-              // Optimize: Parallel database writes
-              // Optimize: Chunked parallel database writes to prevent UI freeze
+              
               const chunkSize = 50;
-              for (let i = 0; i < imported.length; i += chunkSize) {
-                const chunk = imported.slice(i, i + chunkSize);
+              for (let i = 0; i < finalImported.length; i += chunkSize) {
+                const chunk = finalImported.slice(i, i + chunkSize);
                 await Promise.all(chunk.map(emp => dbPut(emp)));
               }
               await loadEmployees();
               setIsCSVModalOpen(false);
-              addToast(`Imported ${imported.length} records`, 'success');
+              addToast(`Imported ${finalImported.length} records`, 'success');
             }}
             onClear={async () => {
               await dbClearAll();

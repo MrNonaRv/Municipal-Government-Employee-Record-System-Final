@@ -23,6 +23,7 @@ export const employees = pgTable('employees', {
   firstName: text('first_name').notNull().default(''),
   middleName: text('middle_name').default(''),
   nameExtension: text('name_extension').default(''),
+  dateOfBirth: text('date_of_birth').default(''),
   sex: text('sex').default(''),
   civilStatus: text('civil_status').default(''),
   citizenship: text('citizenship').default(''),

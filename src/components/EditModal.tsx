@@ -41,6 +41,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const isInitialMount = useRef(true);
+  const isNewRecord = useRef(!allEmployees.some(e => e.id === employee.id));
 
   // States for Storage Integration in EditModal
   const [isDriveConnected, setIsDriveConnected] = useState(false);
@@ -251,6 +252,10 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      return;
+    }
+
+    if (isNewRecord.current) {
       return;
     }
 

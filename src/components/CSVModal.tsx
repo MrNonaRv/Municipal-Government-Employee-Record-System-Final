@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { Employee } from '../types/employee';
 import { generateEmptyEmployee } from '../utils/helpers';
 import { 
@@ -150,20 +151,21 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (activeTab === 'bulk' && file.name.endsWith('.csv')) {
-        parseCSV(content);
-      } else if (activeTab === 'single' && file.name.endsWith('.json')) {
-        parseJSON(content);
-      } else {
-        setError(`Invalid file type. Please upload a ${activeTab === 'bulk' ? '.csv' : '.json'} file.`);
+      const data = new Uint8Array(event.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (activeTab === 'bulk') {
+        parseBulkData(jsonData);
+      } else if (activeTab === 'single') {
+        // ... (existing JSON handling)
       }
     };
     reader.onerror = () => {
       setError("Failed to read the file.");
     };
-    reader.readAsText(file);
-    // Reset input so the same file can be selected again
+    reader.readAsArrayBuffer(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -235,6 +237,57 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
       setError("Failed to parse CSV file. Please ensure it is formatted correctly.");
       console.error("CSV Parse Error", e);
     }
+  };
+
+  const parseBulkData = (data: any[][]) => {
+    if (data.length < 2) {
+      setError("File is empty or invalid.");
+      return;
+    }
+    const headers = data[0].map(h => String(h).trim().toLowerCase());
+    
+    // Mapping indices (simple map)
+    const empIdIndex = headers.indexOf('employee id');
+    const surnameIndex = headers.indexOf('surname');
+    const firstNameIndex = headers.indexOf('firstname');
+    const designationIndex = headers.indexOf('designation');
+    const salaryIndex = headers.indexOf('salary');
+    const dateIndex = headers.indexOf('date');
+    
+    const parsedEmployees: Map<string, Employee> = new Map();
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const empId = empIdIndex !== -1 ? String(row[empIdIndex]) : (row[surnameIndex] + row[firstNameIndex]);
+      
+      let emp = parsedEmployees.get(empId) || {
+        ...generateEmptyEmployee(),
+        id: empId,
+        surname: row[surnameIndex] || '',
+        firstName: row[firstNameIndex] || '',
+        serviceRecords: []
+      };
+      
+      if (designationIndex !== -1) {
+        emp.serviceRecords!.push({
+          id: crypto.randomUUID(),
+          from: row[dateIndex] || '',
+          to: 'PRESENT',
+          designation: row[designationIndex] || '',
+          status: 'PERM.',
+          salary: row[salaryIndex] || '0',
+          station: '',
+          branch: '',
+          lwop: '',
+          sepDate: '',
+          sepCause: ''
+        });
+      }
+      
+      parsedEmployees.set(empId, emp);
+    }
+    
+    setPreviewData(Array.from(parsedEmployees.values()));
   };
 
   const parseJSON = (jsonText: string) => {

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { ServiceRecord } from "../types/employee";
 import { Plus, Trash2 } from "lucide-react";
-import { sortServiceRecords } from "../utils/helpers";
+import { sortServiceRecords, formatDateInput } from "../utils/helpers";
 
 interface Props {
   records: ServiceRecord[];
@@ -50,7 +50,9 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
     field: keyof ServiceRecord,
     value: string,
   ) => {
-    onChange(records.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+    const upperFields: (keyof ServiceRecord)[] = ['designation', 'station', 'branch', 'sepCause'];
+    const finalValue = upperFields.includes(field) ? value.toUpperCase() : value;
+    onChange(records.map((r) => (r.id === id ? { ...r, [field]: finalValue } : r)));
   };
 
   const handleDelete = (id: string) => {
@@ -108,10 +110,10 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                   <input
                     data-id={rec.id}
                     type="text"
-                    placeholder="YYYY-MM-DD"
+                    placeholder="MM/DD/YY"
                     value={rec.from || ""}
                     onChange={(e) =>
-                      updateRecord(rec.id, "from", e.target.value)
+                      updateRecord(rec.id, "from", formatDateInput(e.target.value))
                     }
                     className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
                   />
@@ -119,9 +121,9 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                 <td className="px-1 py-1">
                   <input
                     type="text"
-                    placeholder="YYYY-MM-DD or Present"
+                    placeholder="MM/DD/YY or PRESENT"
                     value={rec.to || ""}
-                    onChange={(e) => updateRecord(rec.id, "to", e.target.value)}
+                    onChange={(e) => updateRecord(rec.id, "to", formatDateInput(e.target.value))}
                     className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
                   />
                 </td>
@@ -218,10 +220,10 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                 <td className="px-1 py-1">
                   <input
                     type="text"
-                    placeholder="YYYY-MM-DD"
+                    placeholder="MM/DD/YY"
                     value={rec.sepDate || ""}
                     onChange={(e) =>
-                      updateRecord(rec.id, "sepDate", e.target.value)
+                      updateRecord(rec.id, "sepDate", formatDateInput(e.target.value))
                     }
                     className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
                   />

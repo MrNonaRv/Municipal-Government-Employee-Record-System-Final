@@ -298,7 +298,7 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     let finalValue = value;
-    if (['surname', 'firstName', 'middleName', 'nameExtension'].includes(name)) {
+    if (['surname', 'firstName', 'middleName', 'nameExtension', 'civilStatus', 'citizenship', 'residentialAddress', 'permanentAddress', 'spouseSurname', 'spouseFirstName', 'spouseMiddleName', 'spouseOccupation', 'spouseEmployer', 'fatherSurname', 'fatherFirstName', 'fatherMiddleName', 'motherSurname', 'motherFirstName', 'motherMiddleName'].includes(name)) {
       finalValue = value.toUpperCase();
     }
     setFormData({ ...formData, [name]: finalValue });

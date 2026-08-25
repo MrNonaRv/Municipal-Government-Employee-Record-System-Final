@@ -153,6 +153,12 @@ export const dataURLtoBlob = (dataurl: string): Blob => {
 
 export const formatSalary = (salary: string, status: string): string => {
   if (!salary) return "";
+  
+  // Extract number and possible existing suffix (e.g., /day, /a)
+  // This helps if the input already contains the suffix
+  const hasDay = salary.toLowerCase().includes("/day");
+  const hasAnnual = salary.toLowerCase().includes("/a");
+  
   let cleanSalary = salary.replace(/[^0-9.]/g, "");
   if (!cleanSalary) return salary;
 
@@ -160,6 +166,19 @@ export const formatSalary = (salary: string, status: string): string => {
   const parts = cleanSalary.split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const formattedSalary = parts.join(".");
+
+  const statusLower = status.toLowerCase();
+  
+  // Explicitly check for status keywords to determine suffix
+  if (statusLower.includes("contractual") || statusLower.includes("temp.")) {
+    return `${formattedSalary}/day`;
+  } else if (statusLower.includes("perm.") || statusLower.includes("prob.")) {
+    return `${formattedSalary}/a`;
+  }
+  
+  // If no status match, but salary originally had a suffix, preserve it
+  if (hasDay) return `${formattedSalary}/day`;
+  if (hasAnnual) return `${formattedSalary}/a`;
 
   return formattedSalary;
 };
@@ -182,4 +201,16 @@ export const formatDate = (dateStr: string): string => {
   const dd = String(d.getDate()).padStart(2, '0');
   const yy = String(d.getFullYear()).slice(-2);
   return `${mm}/${dd}/${yy}`;
+};
+
+export const formatDateInput = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  let formatted = digits;
+  if (digits.length > 2) {
+    formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  if (digits.length > 4) {
+    formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 6)}`;
+  }
+  return formatted.slice(0, 8);
 };

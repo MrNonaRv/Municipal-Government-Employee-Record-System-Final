@@ -156,13 +156,18 @@ export const formatSalary = (salary: string, status: string): string => {
   let cleanSalary = salary.replace(/[^0-9.]/g, "");
   if (!cleanSalary) return salary;
 
+  // Format with thousand separator
+  const parts = cleanSalary.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const formattedSalary = parts.join(".");
+
   const statusLower = status.toLowerCase();
   if (statusLower.includes("contractual") || statusLower.includes("temp.")) {
-    return `${cleanSalary}/day`;
+    return `${formattedSalary}/day`;
   } else if (statusLower.includes("perm.") || statusLower.includes("prob.")) {
-    return `${cleanSalary}/a`;
+    return `${formattedSalary}/a`;
   }
-  return salary;
+  return formattedSalary;
 };
 
 export const sortServiceRecords = (records: import("../types/employee").ServiceRecord[]) => {

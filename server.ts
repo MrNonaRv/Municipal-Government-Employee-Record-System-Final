@@ -16,6 +16,7 @@ import { employees } from './src/db/schema';
 import { getOrCreateUser } from './src/db/users';
 import { loadGDriveConfig, setupDriveRoutes } from "./src/api/drive";
 import { eq } from 'drizzle-orm';
+import { runAnnualCarryOver } from './src/services/automation';
 
 async function getDummyUser() {
   return await getOrCreateUser('dummy_desktop_user', 'desktop_user@local');
@@ -929,6 +930,17 @@ app.post('/api/employees/clear-all', async (req, res) => {
   } catch (error: any) {
     console.error('Failed to clear all data:', error);
     res.status(500).json({ error: 'Failed to clear all data', message: error.message, stack: error.stack });
+  }
+});
+
+app.post('/api/automation/run-annual-carryover', async (req, res) => {
+  try {
+    const count = await runAnnualCarryOver();
+    syncDrizzleToFirestore().catch(e => console.error("Background sync error:", e));
+    res.json({ success: true, updatedCount: count });
+  } catch (error: any) {
+    console.error('Failed to run annual carryover:', error);
+    res.status(500).json({ error: 'Failed to run annual carryover', message: error.message });
   }
 });
 

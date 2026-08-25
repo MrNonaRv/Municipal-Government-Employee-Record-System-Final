@@ -204,13 +204,18 @@ export const formatDate = (dateStr: string): string => {
 };
 
 export const formatDateInput = (value: string): string => {
+  if (value.toLowerCase() === 'present') return 'PRESENT';
   const digits = value.replace(/\D/g, "");
-  let formatted = digits;
+  
+  if (digits.length === 0) return '';
+  
+  let formatted = digits.slice(0, 2);
   if (digits.length > 2) {
-    formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    formatted += '/' + digits.slice(2, 4);
   }
   if (digits.length > 4) {
-    formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 6)}`;
+    formatted += '/' + digits.slice(4, 6);
   }
-  return formatted.slice(0, 8);
+  
+  return formatted;
 };

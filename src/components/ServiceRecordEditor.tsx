@@ -115,16 +115,16 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "from", formatDateInput(e.target.value))
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
                   <input
                     type="text"
-                    placeholder="MM/DD/YY or PRESENT"
+                    placeholder="MM/DD/YY"
                     value={rec.to || ""}
                     onChange={(e) => updateRecord(rec.id, "to", formatDateInput(e.target.value))}
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -134,7 +134,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "designation", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -143,7 +143,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "status", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-1 py-1.5 transition-all outline-none uppercase cursor-pointer"
+                    className="w-full bg-white border border-slate-200 rounded px-1 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent cursor-pointer"
                   >
                     <option value="">Select</option>
                     {[
@@ -161,20 +161,6 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                         {s}
                       </option>
                     ))}
-                    {rec.status &&
-                      ![
-                        "-do-",
-                        "Perm.",
-                        "Temp.",
-                        "Prob.",
-                        "Casual",
-                        "Contractual",
-                        "Job Order",
-                        "Coterminous",
-                        "Elected",
-                      ].includes(rec.status) && (
-                        <option value={rec.status}>{rec.status}</option>
-                      )}
                   </select>
                 </td>
                 <td className="px-1 py-1">
@@ -184,7 +170,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "salary", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none font-mono"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none font-mono focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -194,7 +180,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "station", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -204,7 +190,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "branch", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -214,7 +200,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "lwop", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -225,7 +211,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "sepDate", formatDateInput(e.target.value))
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-1 py-1">
@@ -235,7 +221,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "sepCause", e.target.value)
                     }
-                    className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-[var(--gold)] focus:bg-white rounded px-2 py-1.5 transition-all outline-none uppercase"
+                    className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
                 </td>
                 <td className="px-2 py-1 text-center">

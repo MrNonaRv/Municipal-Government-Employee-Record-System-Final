@@ -19,13 +19,15 @@ export default function App() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [duplicateEmpToSave, setDuplicateEmpToSave] = useState<Employee | null>(null);
   const [inputValue, setInputValue] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(12);
+  
   useEffect(() => {
-    const timer = setTimeout(() => setSearchQuery(inputValue), 300);
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(inputValue);
+    }, 300);
     return () => clearTimeout(timer);
   }, [inputValue]);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -482,12 +484,13 @@ export default function App() {
   }, [employees]);
 
   useEffect(() => {
-    setVisibleCount(12);
-  }, [searchQuery, departmentFilter, statusFilter]);
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, departmentFilter, statusFilter]);
 
   const filteredEmployees = useMemo(() => {
-    const q = deferredSearchQuery.toLowerCase();
+    const q = debouncedSearchQuery.toLowerCase();
     return employees.filter(emp => {
+      // Memoize the employee string representation if needed, but for now this is fine.
       const fullName = `${emp.firstName} ${emp.surname} ${emp.nameExtension || ""}`.toLowerCase();
       const latestSR = emp.serviceRecords.length > 0 ? emp.serviceRecords[emp.serviceRecords.length - 1] : null;
       const latestDesignation = latestSR ? latestSR.designation.toLowerCase() : '';
@@ -498,7 +501,7 @@ export default function App() {
       
       return matchesSearch && matchesStatus && matchesDept;
     });
-  }, [employees, deferredSearchQuery, statusFilter, departmentFilter]);
+  }, [employees, debouncedSearchQuery, statusFilter, departmentFilter]);
 
   const permanentCount = useMemo(() => employees.filter(e => 
     e.serviceRecords.length > 0 && e.serviceRecords[e.serviceRecords.length - 1].status.toLowerCase().includes('perm')

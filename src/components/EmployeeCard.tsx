@@ -203,7 +203,7 @@ const EmployeeCard = memo(function EmployeeCard({
             </div>
             <div className="flex flex-col">
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                Monthly Salary
+                Annual Salary
               </span>
               <span className="text-xs font-bold truncate text-[var(--green)]">
                 {formatSalary(latestSR?.salary || "N/A", latestSR?.status || "")}

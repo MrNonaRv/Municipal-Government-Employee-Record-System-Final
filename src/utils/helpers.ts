@@ -161,12 +161,6 @@ export const formatSalary = (salary: string, status: string): string => {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const formattedSalary = parts.join(".");
 
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes("contractual") || statusLower.includes("temp.")) {
-    return `${formattedSalary}/day`;
-  } else if (statusLower.includes("perm.") || statusLower.includes("prob.")) {
-    return `${formattedSalary}/a`;
-  }
   return formattedSalary;
 };
 

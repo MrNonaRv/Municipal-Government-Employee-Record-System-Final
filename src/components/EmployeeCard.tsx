@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { Employee } from "../types/employee";
-import { getResolvedLatestRecord } from '../utils/helpers';
+import { getResolvedLatestRecord, formatSalary } from '../utils/helpers';
 import {
   User,
   Briefcase,
@@ -92,7 +92,7 @@ const EmployeeCard = memo(function EmployeeCard({
               Salary
             </span>
             <span className="text-xs text-[var(--green)] font-mono font-bold">
-              {latestSR?.salary || "N/A"}
+              {formatSalary(latestSR?.salary || "N/A", latestSR?.status || "")}
             </span>
           </div>
         </div>
@@ -206,7 +206,7 @@ const EmployeeCard = memo(function EmployeeCard({
                 Monthly Salary
               </span>
               <span className="text-xs font-bold truncate text-[var(--green)]">
-                {latestSR?.salary || "N/A"}
+                {formatSalary(latestSR?.salary || "N/A", latestSR?.status || "")}
               </span>
             </div>
           </div>

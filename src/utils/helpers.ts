@@ -150,3 +150,37 @@ export const dataURLtoBlob = (dataurl: string): Blob => {
   const u8arr = Uint8Array.from(bstr, c => c.charCodeAt(0));
   return new Blob([u8arr], { type: mime });
 };
+
+export const formatSalary = (salary: string, status: string): string => {
+  if (!salary) return "";
+  let cleanSalary = salary.replace(/[^0-9.]/g, "");
+  if (!cleanSalary) return salary;
+
+  const statusLower = status.toLowerCase();
+  if (statusLower.includes("contractual") || statusLower.includes("temp.")) {
+    return `${cleanSalary}/day`;
+  } else if (statusLower.includes("perm.") || statusLower.includes("prob.")) {
+    return `${cleanSalary}/a`;
+  }
+  return salary;
+};
+
+export const sortServiceRecords = (records: import("../types/employee").ServiceRecord[]) => {
+  return [...records].sort((a, b) => {
+    const dateA = new Date(a.from).getTime();
+    const dateB = new Date(b.from).getTime();
+    if (isNaN(dateA)) return 1;
+    if (isNaN(dateB)) return -1;
+    return dateA - dateB;
+  });
+};
+
+export const formatDate = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+};

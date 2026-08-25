@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Employee, LeaveRecord } from '../types/employee';
+import { formatDate, formatSalary } from '../utils/helpers';
 import { Printer, Plus, Download, Calendar } from 'lucide-react';
 import LeaveCardPrintModal from './LeaveCardPrintModal';
 import AddAbsenceModal from './AddAbsenceModal';
@@ -122,7 +123,7 @@ const EditableCellComponent = ({
   );
 };
 
-export default function LeaveCardViewer({ employee, onSave }: Props) {
+const LeaveCardViewer = ({ employee, onSave }: Props) => {
   const records = employee.leaveRecords || [];
   const currentYear = new Date().getFullYear();
   const currentMonthIndex = new Date().getMonth();
@@ -784,7 +785,7 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
           <h2 className="font-playfair text-2xl font-bold uppercase tracking-tight text-[var(--navy)]">Leave Card</h2>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Official Leave Records & Salary Calculation</p>
           {firstAppointmentDate && (
-            <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mt-1">Date of First Appointment: {firstAppointmentDate}</p>
+            <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mt-1">Date of First Appointment: {formatDate(firstAppointmentDate)}</p>
           )}
           {onSave && <p className="text-blue-500 font-bold tracking-tight text-xs mt-2 italic">Double-click any cell to edit</p>}
         </div>
@@ -1040,3 +1041,5 @@ export default function LeaveCardViewer({ employee, onSave }: Props) {
     </div>
   );
 }
+
+export default React.memo(LeaveCardViewer);

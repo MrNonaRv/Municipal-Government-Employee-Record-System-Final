@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { ServiceRecord } from "../types/employee";
 import { Plus, Trash2 } from "lucide-react";
+import { sortServiceRecords } from "../utils/helpers";
 
 interface Props {
   records: ServiceRecord[];
@@ -95,7 +96,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {records.map((rec, i) => (
+            {sortServiceRecords(records).map((rec, i) => (
               <tr
                 key={rec.id}
                 className="hover:bg-blue-50/30 transition-colors group"

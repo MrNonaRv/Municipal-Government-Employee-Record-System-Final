@@ -1,4 +1,4 @@
-import { getResolvedLatestRecord } from '../utils/helpers';
+import { getResolvedLatestRecord, formatSalary, sortServiceRecords, formatDate } from '../utils/helpers';
 import React, { useState, useEffect, Suspense, lazy, useRef } from "react";
 
 import { Employee, Attachment } from "../types/employee";
@@ -164,13 +164,13 @@ const DocumentThumbnail = React.memo(({
     </div>
   );
 });
-export default function ProfileModal({
+const ProfileModal = ({
   employee,
   onClose,
   onEdit,
   onDelete,
   onSave,
-}: Props) {
+}: Props) => {
   const [activeTab, setActiveTab] = useState<"sr" | "docs" | "leaves">("sr");
   const [showDigitalPds, setShowDigitalPds] = useState<boolean>(
     !employee.pdsScan,
@@ -564,16 +564,7 @@ export default function ProfileModal({
                           Date of Birth
                         </span>
                         <strong className="text-base font-extrabold text-slate-900 uppercase block">
-                          {employee.dateOfBirth
-                            ? new Date(employee.dateOfBirth).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                },
-                              )
-                            : "—"}
+                          {employee.dateOfBirth ? formatDate(employee.dateOfBirth) : "—"}
                         </strong>
                       </div>
                       <div>
@@ -616,7 +607,7 @@ export default function ProfileModal({
                           First Appt. Date
                         </span>
                         <strong className="text-sm font-black text-slate-900 block truncate">
-                          {(employee.serviceRecords || []).length > 0 ? [...employee.serviceRecords].sort((a, b) => new Date(a.from).getTime() - new Date(b.from).getTime())[0].from || '—' : "—"}
+                          {(employee.serviceRecords || []).length > 0 ? formatDate([...employee.serviceRecords].sort((a, b) => new Date(a.from).getTime() - new Date(b.from).getTime())[0].from || '—') : "—"}
                         </strong>
                       </div>
                       <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center shadow-sm">
@@ -677,16 +668,16 @@ export default function ProfileModal({
                           </tr>
                         </thead>
                         <tbody>
-                          {(employee.serviceRecords || []).map((rec, i) => (
+                          {sortServiceRecords(employee.serviceRecords || []).map((rec, i) => (
                             <tr key={i} className="border-b border-slate-200">
                               <td className="border border-slate-300 px-2 py-2 font-bold font-mono text-center text-[9px] text-slate-400 bg-slate-50/50">
                                 {i + 1}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                                {rec.from}
+                                {formatDate(rec.from)}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                                {rec.to}
+                                {formatDate(rec.to)}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-left uppercase font-bold text-slate-800 break-words font-sans max-w-[150px]">
                                 {rec.designation}
@@ -695,7 +686,7 @@ export default function ProfileModal({
                                 {rec.status}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
-                                {rec.salary}
+                                {formatSalary(rec.salary, rec.status)}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-left uppercase font-medium text-slate-600 break-words font-sans max-w-[180px]">
                                 {rec.station || "—"}
@@ -707,7 +698,7 @@ export default function ProfileModal({
                                 {rec.lwop || "—"}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-center font-mono text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                                {rec.sepDate || "—"}
+                                {rec.sepDate ? formatDate(rec.sepDate) : "—"}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-left uppercase font-medium text-slate-550 break-words font-sans max-w-[130px]">
                                 {rec.sepCause || "—"}
@@ -1084,13 +1075,13 @@ export default function ProfileModal({
                 </tr>
               </thead>
               <tbody>
-                {(employee.serviceRecords || []).map((rec, i) => (
+                {sortServiceRecords(employee.serviceRecords || []).map((rec, i) => (
                   <tr key={i}>
                     <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">
-                      {rec.from}
+                      {formatDate(rec.from)}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">
-                      {rec.to}
+                      {formatDate(rec.to)}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center">
                       {rec.designation}
@@ -1099,7 +1090,7 @@ export default function ProfileModal({
                       {rec.status}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">
-                      {rec.salary}
+                      {formatSalary(rec.salary, rec.status)}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center">
                       {rec.station}
@@ -1111,7 +1102,7 @@ export default function ProfileModal({
                       {rec.lwop || "None"}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center whitespace-nowrap">
-                      {rec.sepDate || ""}
+                      {rec.sepDate ? formatDate(rec.sepDate) : ""}
                     </td>
                     <td className="border-x border-black px-1 py-0.5 text-center">
                       {rec.sepCause || ""}
@@ -1435,3 +1426,5 @@ export default function ProfileModal({
     </div>
   );
 }
+
+export default React.memo(ProfileModal);

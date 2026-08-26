@@ -152,14 +152,19 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
     const reader = new FileReader();
     reader.onload = (event) => {
       const data = new Uint8Array(event.target?.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
-      if (activeTab === 'bulk') {
-        parseBulkData(jsonData);
-      } else if (activeTab === 'single') {
-        // ... (existing JSON handling)
+      try {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (activeTab === 'bulk') {
+          parseBulkData(jsonData as any[][]);
+        } else if (activeTab === 'single') {
+          // ... (existing JSON handling)
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Failed to parse the file. Please ensure it is a valid Excel or CSV file.");
       }
     };
     reader.onerror = () => {
@@ -244,47 +249,97 @@ export default function CSVModal({ onClose, onImport, onClear, employees, initia
       setError("File is empty or invalid.");
       return;
     }
-    const headers = data[0].map(h => String(h).trim().toLowerCase());
+    const headers = data[0].map(h => String(h).trim().toLowerCase().replace(/[^a-z0-9\s]/g, ''));
     
-    // Mapping indices (simple map)
-    const empIdIndex = headers.indexOf('employee id');
-    const surnameIndex = headers.indexOf('surname');
-    const firstNameIndex = headers.indexOf('firstname');
-    const designationIndex = headers.indexOf('designation');
-    const salaryIndex = headers.indexOf('salary');
-    const dateIndex = headers.indexOf('date');
+    // Helper to find the first matching column name from a list of possibilities
+    const findCol = (possibilities: string[]) => {
+      return headers.findIndex(h => possibilities.some(p => h.includes(p)));
+    };
+
+    // Flexible mapping indices for Salary Adjustments & General Payroll
+    const empIdIndex = findCol(['employee id', 'emp id', 'id']);
+    const nameIndex = findCol(['name', 'full name', 'employee name']);
+    const surnameIndex = findCol(['surname', 'last name', 'lastname']);
+    const firstNameIndex = findCol(['firstname', 'first name']);
+    const designationIndex = findCol(['designation', 'position', 'title']);
+    const salaryIndex = findCol(['new rate', 'salary', 'rate', 'monthly salary new']); // Prioritize 'new rate' for differential docs
+    const dateIndex = findCol(['date', 'from', 'effective', 'period']);
     
     const parsedEmployees: Map<string, Employee> = new Map();
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const empId = empIdIndex !== -1 ? String(row[empIdIndex]) : (row[surnameIndex] + row[firstNameIndex]);
+      if (!row || row.length === 0) continue;
+
+      let surname = surnameIndex !== -1 ? String(row[surnameIndex] || '') : '';
+      let firstName = firstNameIndex !== -1 ? String(row[firstNameIndex] || '') : '';
       
-      let emp = parsedEmployees.get(empId) || {
-        ...generateEmptyEmployee(),
-        id: empId,
-        surname: row[surnameIndex] || '',
-        firstName: row[firstNameIndex] || '',
-        serviceRecords: []
-      };
+      // If no separated names, try to split the combined Name column
+      if (!surname && !firstName && nameIndex !== -1 && row[nameIndex]) {
+        const full = String(row[nameIndex]).trim();
+        if (full.includes(',')) {
+          const parts = full.split(',');
+          surname = parts[0].trim();
+          firstName = parts[1].trim();
+        } else {
+          const parts = full.split(' ');
+          surname = parts.pop() || '';
+          firstName = parts.join(' ');
+        }
+      }
+
+      const existingDbEmp = employees.find(e => 
+        (empIdIndex !== -1 && String(row[empIdIndex]) && e.id === String(row[empIdIndex])) || 
+        (e.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() && 
+         e.surname.trim().toLowerCase() === surname.trim().toLowerCase())
+      );
+
+      const empId = existingDbEmp ? existingDbEmp.id : (empIdIndex !== -1 && row[empIdIndex] ? String(row[empIdIndex]) : (surname + firstName));
       
-      if (designationIndex !== -1) {
-        emp.serviceRecords!.push({
+      let emp = parsedEmployees.get(empId);
+      if (!emp) {
+        // Deep clone existing employee to preserve history, or create a new one
+        emp = existingDbEmp ? JSON.parse(JSON.stringify(existingDbEmp)) : {
+          ...generateEmptyEmployee(),
+          id: empId,
+          surname,
+          firstName,
+          serviceRecords: []
+        };
+      }
+      
+      const newSalary = salaryIndex !== -1 ? String(row[salaryIndex] || '') : '';
+      const newDesignation = designationIndex !== -1 ? String(row[designationIndex] || '') : '';
+      
+      // Only append if there is actually a salary or designation change to record
+      if (newSalary || newDesignation) {
+        const prevRecord = emp!.serviceRecords && emp!.serviceRecords.length > 0 
+          ? emp!.serviceRecords[emp!.serviceRecords.length - 1] 
+          : null;
+          
+        // Default to a sensible format for payroll period if date column is missing
+        let newDate = dateIndex !== -1 ? String(row[dateIndex] || '') : '';
+        if (!newDate) {
+          const d = new Date();
+          newDate = `${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear().toString().slice(-2)}`;
+        }
+
+        emp!.serviceRecords!.push({
           id: crypto.randomUUID(),
-          from: row[dateIndex] || '',
+          from: newDate,
           to: 'PRESENT',
-          designation: row[designationIndex] || '',
-          status: 'PERM.',
-          salary: row[salaryIndex] || '0',
-          station: '',
-          branch: '',
-          lwop: '',
+          designation: newDesignation || (prevRecord?.designation || ''),
+          status: prevRecord?.status || 'PERM.',
+          salary: newSalary || (prevRecord?.salary || '0'),
+          station: prevRecord?.station || '',
+          branch: prevRecord?.branch || '',
+          lwop: prevRecord?.lwop || '',
           sepDate: '',
           sepCause: ''
         });
       }
       
-      parsedEmployees.set(empId, emp);
+      parsedEmployees.set(empId, emp!);
     }
     
     setPreviewData(Array.from(parsedEmployees.values()));

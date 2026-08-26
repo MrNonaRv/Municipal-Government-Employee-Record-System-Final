@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense, useDeferredValue } from 'react';
 import { Employee } from './types/employee';
+import { seedDatabase } from './utils/seedData';
 import { dbGetAll, dbPut, dbDelete, syncOfflineData, getSyncQueue, isOnline, getWorkMode, setWorkMode, WorkMode, checkServerConnection, getServerReachable, dbClearAll, addActivityLog, getIsSyncing } from './services/db';
 import { generateEmptyEmployee } from './utils/helpers';
 import EmployeeCard from './components/EmployeeCard';
@@ -85,6 +86,8 @@ export default function App() {
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [editTab, setEditTab] = useState<'service' | 'attachments' | 'leaves'>('service');
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [isBatchNOSAOpen, setIsBatchNOSAOpen] = useState(false);
+
   const [csvModalTab, setCsvModalTab] = useState<'bulk' | 'single' | 'export' | 'gdrive'>('bulk');
   const [deletingEmp, setDeletingEmp] = useState<Employee | null>(null);
   const [showAuthExpiredBanner, setShowAuthExpiredBanner] = useState(false);
@@ -190,8 +193,8 @@ export default function App() {
     // Check sync status
     fetch('/api/sync-diagnostic').then(r => r.json()).then(data => setSyncDiagnostic(data)).catch(console.error);
     
-    // Initial data load - force server refresh if reachable to catch other device changes
-    loadEmployees(true);
+    // Initial data load - seed first if needed, then force server refresh
+    seedDatabase().then(() => loadEmployees(true));
 
     // Initial sync check: if we have local changes, try to sync immediately
     const checkInitialSync = async () => {
@@ -469,7 +472,14 @@ export default function App() {
     const statuses = new Set<string>();
     employees.forEach(emp => {
       const latestSR = emp.serviceRecords[emp.serviceRecords.length - 1];
-      if (latestSR && latestSR.status) statuses.add(latestSR.status);
+      if (latestSR && latestSR.status) {
+        // Normalize common variations so they group correctly in the dropdown
+        let status = latestSR.status.trim();
+        if (status.toLowerCase() === 'perm' || status.toLowerCase() === 'perm.') {
+          status = 'PERM.';
+        }
+        statuses.add(status);
+      }
     });
     return Array.from(statuses).sort();
   }, [employees]);
@@ -625,7 +635,15 @@ export default function App() {
                 {isDriveConnecting ? 'Connecting...' : isDriveConnected ? 'Google Drive' : 'Link Storage'}
               </span>
             </button>
-            <button 
+                        <button 
+              onClick={() => setIsBatchNOSAOpen(true)}
+              aria-label="Generate Batch NOSA"
+              className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-slate-700 hover:bg-slate-600 rounded-lg border border-white/10 text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial"
+            >
+              <Printer size={16} />
+              <span className="inline">Batch NOSA</span>
+            </button>
+<button 
               onClick={() => { setCsvModalTab('bulk'); setIsCSVModalOpen(true); }}
               aria-label="Open import and export center"
               className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-[var(--navy-light)] hover:bg-[var(--navy-lighter)] rounded-lg border border-white/10 text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 flex-1 sm:flex-initial"
@@ -767,7 +785,7 @@ export default function App() {
             <h3 className="text-xl font-bold text-slate-900 font-playfair">No Records Found</h3>
             <p className="text-slate-500 mt-2 max-w-xs mx-auto">We couldn't find any employees matching your current search criteria.</p>
             <button 
-              onClick={() => setSearchQuery('')}
+              onClick={() => setInputValue('')}
               className="mt-6 text-[var(--gold-dark)] font-bold hover:underline"
             >
               Clear all filters

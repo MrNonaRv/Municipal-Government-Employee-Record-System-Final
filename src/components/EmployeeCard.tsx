@@ -79,12 +79,12 @@ const EmployeeCard = memo(function EmployeeCard({
             </span>
             <span
               className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit ${
-                true
+                latestSR?.status?.toLowerCase().includes('perm')
                   ? "bg-emerald-50 text-emerald-600"
                   : "bg-amber-50 text-amber-600"
               }`}
             >
-              {latestSR?.designation || "N/A"}
+              {latestSR?.status || "N/A"}
             </span>
           </div>
           <div className="flex flex-col">
@@ -159,12 +159,12 @@ const EmployeeCard = memo(function EmployeeCard({
         <div className="absolute top-4 right-4">
           <span
             className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-md border ${
-              true
+              latestSR?.status?.toLowerCase().includes('perm')
                 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                 : "bg-amber-500/20 text-amber-400 border-amber-500/30"
             }`}
           >
-            {latestSR?.designation || "N/A"}
+            {latestSR?.status || "N/A"}
           </span>
         </div>
       </div>

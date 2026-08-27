@@ -177,6 +177,7 @@ const ProfileModal = ({
     !employee.pdsScan,
   );
   const [showNosa, setShowNosa] = useState<boolean>(false);
+  const [showPdsPrint, setShowPdsPrint] = useState<boolean>(false);
   const [isFullScreenPds, setIsFullScreenPds] = useState<boolean>(false);
   const [scale, setScale] = useState<number>(1);
   const [fitToWidth, setFitToWidth] = useState<boolean>(true);

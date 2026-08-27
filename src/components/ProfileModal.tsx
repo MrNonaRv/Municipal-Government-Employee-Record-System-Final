@@ -35,6 +35,7 @@ import {
 
 const LeaveTrendsChart = lazy(() => import("./LeaveTrendsChart"));
 const NOSAModal = lazy(() => import("./NOSAModal"));
+const PDSPrintModal = lazy(() => import("./PDSPrintModal"));
 const LeaveCardViewer = lazy(() => import("./LeaveCardViewer"));
 const PreviewModal = lazy(() =>
   import("./PreviewModal").then((module) => ({ default: module.PreviewModal })),
@@ -419,6 +420,17 @@ const ProfileModal = ({
                 className="group-hover:scale-110 transition-transform"
               />
               <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={() => setShowPdsPrint(true)}
+              aria-label="Generate PDS"
+              className="flex items-center gap-2 p-2.5 md:px-5 md:py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-purple-500/20 group"
+            >
+              <FileText
+                size={14}
+                className="group-hover:scale-110 transition-transform"
+              />
+              <span className="hidden sm:inline">PDS</span>
             </button>
             <button
               onClick={() => setShowNosa(true)}
@@ -1285,6 +1297,14 @@ const ProfileModal = ({
 
       {/* FULLSCREEN LIGHTBOX PORTAL */}
       <AnimatePresence>
+        {showPdsPrint && (
+          <Suspense fallback={<div>Loading PDS generator...</div>}>
+            <PDSPrintModal
+              employee={employee}
+              onClose={() => setShowPdsPrint(false)}
+            />
+          </Suspense>
+        )}
         {showNosa && (
           <NOSAModal
             employee={employee}

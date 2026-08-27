@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Employee } from '../types/employee';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Calendar, FileText, User } from 'lucide-react';
 import { getResolvedLatestRecord } from '../utils/helpers';
 import { motion } from 'motion/react';
 
@@ -76,85 +76,94 @@ export default function BatchNOSAModal({ employees, onClose }: Props) {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 20, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden print:w-full print:max-w-none print:shadow-none print:block print:overflow-visible print:h-auto"
+        className="bg-white rounded-2xl shadow-2xl w-[98vw] max-w-[1800px] h-[95vh] flex flex-col md:flex-row overflow-hidden print:w-full print:max-w-none print:shadow-none print:block print:overflow-visible print:h-auto print:rounded-none"
       >
         {/* SETTINGS SIDE */}
-        <div className="w-full md:w-1/3 bg-slate-50 border-r border-slate-200 p-6 flex flex-col overflow-y-auto print:hidden">
-          <div className="flex justify-between items-center mb-6">
+        
+        {/* SETTINGS SIDE */}
+        <div className="w-full md:w-[400px] shrink-0 bg-slate-50 border-r border-slate-200 p-6 flex flex-col overflow-y-auto print:hidden shadow-sm">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200">
             <div>
               <h2 className="text-xl font-bold text-[var(--navy)]">Batch NOSA</h2>
-              <p className="text-xs text-slate-500 mt-1">Generate for {employees.length} employees</p>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Generate for {employees.length} employees</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-              <X size={20} className="text-slate-500" />
+            <button onClick={onClose} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-rose-500 rounded-xl transition-colors">
+              <X size={20} />
             </button>
           </div>
 
-          <div className="space-y-6 flex-1">
-            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
-              <h3 className="text-xs font-bold uppercase text-[var(--navy)] tracking-wider">Document Settings</h3>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500">Date of Notice</label>
-                <input type="date" value={dateOfNotice} onChange={e => setDateOfNotice(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+          <div className="space-y-5 flex-1">
+            
+            {/* Document Dates */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--navy)] border-b border-slate-100 pb-2">
+                <Calendar size={16} className="text-[var(--gold)]" /> Document Dates
+              </h3>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">Date of Notice</label>
+                <input type="date" value={dateOfNotice} onChange={e => setDateOfNotice(e.target.value)} className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500">Effective Date (New)</label>
-                <input type="text" value={newDate} onChange={e => setNewDate(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">Effective Date (New Salary)</label>
+                <input type="text" value={newDate} onChange={e => setNewDate(e.target.value)} placeholder="e.g. January 1, 2026" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500">As of Date (Old)</label>
-                <input type="text" value={oldDate} onChange={e => setOldDate(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">As of Date (Old Salary)</label>
+                <input type="text" value={oldDate} onChange={e => setOldDate(e.target.value)} placeholder="e.g. December 31, 2025" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
               </div>
             </div>
 
-            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
-              <h3 className="text-xs font-bold uppercase text-[var(--navy)] tracking-wider">Circular Details</h3>
+            {/* Legal Mandates */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--navy)] border-b border-slate-100 pb-2">
+                <FileText size={16} className="text-[var(--gold)]" /> Legal Mandates
+              </h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">LBC No.</label>
-                  <input type="text" value={lbcNo} onChange={e => setLbcNo(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">LBC No.</label>
+                  <input type="text" value={lbcNo} onChange={e => setLbcNo(e.target.value)} placeholder="160" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">LBC Date</label>
-                  <input type="text" value={lbcDate} onChange={e => setLbcDate(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">LBC Date</label>
+                  <input type="text" value={lbcDate} onChange={e => setLbcDate(e.target.value)} placeholder="01/01/2026" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">EO No.</label>
-                  <input type="text" value={eoNo} onChange={e => setEoNo(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">EO No.</label>
+                  <input type="text" value={eoNo} onChange={e => setEoNo(e.target.value)} placeholder="31" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">EO Date</label>
-                  <input type="text" value={eoDate} onChange={e => setEoDate(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">Plantilla Year</label>
-                  <input type="text" value={fy} onChange={e => setFy(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500">Generic Item No.</label>
-                  <input type="text" value={itemNo} onChange={e => setItemNo(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">EO Date</label>
+                  <input type="text" value={eoDate} onChange={e => setEoDate(e.target.value)} placeholder="01/01/2026" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
-              <h3 className="text-xs font-bold uppercase text-[var(--navy)] tracking-wider">Signatory</h3>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500">Mayor's Name</label>
-                <input type="text" value={mayorName} onChange={e => setMayorName(e.target.value)} className="w-full border border-slate-200 rounded px-2 py-1 text-sm" />
+            {/* General Info */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--navy)] border-b border-slate-100 pb-2">
+                <User size={16} className="text-[var(--gold)]" /> General Details
+              </h3>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">Signatory (Mayor)</label>
+                <input type="text" value={mayorName} onChange={e => setMayorName(e.target.value)} placeholder="Hon. Jane Doe" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 flex justify-between">
+                  Plantilla Year
+                  <span className="font-normal text-slate-400 font-serif italic text-[10px]">Appears in bottom left</span>
+                </label>
+                <input type="text" value={fy} onChange={e => setFy(e.target.value)} placeholder="FY 2026" className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 rounded-lg px-3 py-2.5 text-sm transition-all outline-none text-slate-800" />
               </div>
             </div>
             
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-200">
+          <div className="mt-6 pt-5">
             <button 
               onClick={() => window.print()} 
-              className="w-full py-3 bg-[var(--gold)] text-[var(--navy)] font-bold uppercase tracking-widest rounded-xl hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-[var(--gold)] text-[var(--navy)] font-bold uppercase tracking-wider rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
               <Printer size={18} /> Print {employees.length} Documents
             </button>
@@ -162,7 +171,7 @@ export default function BatchNOSAModal({ employees, onClose }: Props) {
         </div>
 
         {/* PREVIEW/PRINT SIDE */}
-        <div className="w-full md:w-2/3 bg-slate-200 p-8 overflow-y-auto overflow-x-auto flex flex-col items-center justify-start print:p-0 print:bg-white print:overflow-visible print:block print:w-full">
+        <div className="w-full md:flex-1 bg-slate-200 p-8 overflow-y-auto overflow-x-auto flex flex-col items-center justify-start print:p-0 print:bg-white print:overflow-visible print:block print:w-full">
           {nosaList.map((nosa, idx) => (
             <div key={nosa.employee.id} style={{ fontFamily: '"Times New Roman", Times, serif', pageBreakAfter: idx < nosaList.length - 1 ? 'always' : 'auto' }} className="bg-white p-[1in] shadow-sm w-[8.5in] min-w-[8.5in] max-w-[8.5in] shrink-0 min-h-[11in] text-black font-serif relative mb-8 print:mb-0 print:shadow-none print:w-full print:min-w-0 print:max-w-none print:min-h-0 print:p-[1in] mx-auto">
               {/* Header */}

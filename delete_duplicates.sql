@@ -1,0 +1,13 @@
+DELETE FROM employees WHERE id = 513;
+DELETE FROM employees WHERE id = 518;
+DELETE FROM employees WHERE id = 653;
+DELETE FROM employees WHERE id = 654;
+DELETE FROM employees WHERE id = 571;
+DELETE FROM employees WHERE id = 614;
+DELETE FROM employees WHERE id = 615;
+DELETE FROM employees WHERE id = 573;
+DELETE FROM employees WHERE id = 638;
+DELETE FROM employees WHERE id = 640;
+DELETE FROM employees WHERE id = 586;
+DELETE FROM employees WHERE id = 528;
+DELETE FROM employees WHERE id = 639;

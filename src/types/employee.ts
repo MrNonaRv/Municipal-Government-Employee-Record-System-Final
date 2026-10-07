@@ -67,6 +67,7 @@ export interface ServiceRecord {
   lwop: string;
   sepDate: string;
   sepCause: string;
+  annual_salary?: string;
 }
 
 export interface Attachment {

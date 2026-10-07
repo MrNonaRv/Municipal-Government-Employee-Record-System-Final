@@ -7,6 +7,7 @@ import EmployeeCard from './components/EmployeeCard';
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const EditModal = lazy(() => import('./components/EditModal'));
 const CSVModal = lazy(() => import('./components/CSVModal'));
+const ExcelUploadModal = lazy(() => import('./components/ExcelUploadModal'));
 import ToastContainer from './components/Toast';
 const ConfirmModal = lazy(() => import('./components/ConfirmModal'));
 const SyncHistoryModal = lazy(() => import('./components/SyncHistoryModal'));
@@ -86,6 +87,7 @@ export default function App() {
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [editTab, setEditTab] = useState<'service' | 'attachments' | 'leaves'>('service');
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isBatchNOSAOpen, setIsBatchNOSAOpen] = useState(false);
 
   const [csvModalTab, setCsvModalTab] = useState<'bulk' | 'single' | 'export' | 'gdrive'>('bulk');
@@ -400,6 +402,11 @@ export default function App() {
       const reachable = getServerReachable();
       
       if (mode !== 'local' && reachable && (forceServerRefresh || employees.length === 0)) {
+        // Explicitly refresh local cache
+        const freshData = await dbGetAll(); // dbGetAll already handles fetch
+        setEmployees(freshData);
+        setIsLoading(false);
+        return;
       }
 
       const data = await dbGetAll();

@@ -256,12 +256,9 @@ export default function EditModal({ employee, allEmployees = [], onClose, onSave
       return;
     }
 
-    if (isNewRecord.current) {
-      return;
-    }
-
     const timer = setTimeout(() => {
       onSave(formData, true);
+      isNewRecord.current = false; // After first save, it's no longer new
       setLastSaved(new Date());
     }, 1500); // 1.5 second debounce for autosave
 

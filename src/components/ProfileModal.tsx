@@ -699,7 +699,7 @@ const ProfileModal = ({
                                 {rec.status}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
-                                {formatSalary(rec.salary, rec.status)}
+                                {formatSalary(rec.annual_salary || rec.salary, rec.status)}
                               </td>
                               <td className="border border-slate-300 px-2 py-2 text-left uppercase font-medium text-slate-600 break-words font-sans max-w-[180px]">
                                 {rec.station || "—"}

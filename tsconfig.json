@@ -23,5 +23,6 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["backup", "node_modules"]
 }

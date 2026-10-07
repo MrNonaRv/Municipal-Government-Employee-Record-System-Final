@@ -64,7 +64,11 @@ export default function ExcelUploadModal({ onClose, employees }: Props) {
                 annual_salary: String(annualSalary).replace(/[^0-9.]/g, ''),
                 station: department || '',
                 designation: position || '',
-                status: 'Permanent'
+                status: 'Permanent',
+                branch: '',
+                lwop: '',
+                sepDate: '',
+                sepCause: ''
             }];
 
             await dbPut(updatedEmp);

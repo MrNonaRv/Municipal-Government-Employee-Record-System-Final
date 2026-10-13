@@ -154,33 +154,52 @@ export const dataURLtoBlob = (dataurl: string): Blob => {
 export const formatSalary = (salary: string, status: string): string => {
   if (!salary) return "";
   
-  // Extract number and possible existing suffix (e.g., /day, /a)
-  // This helps if the input already contains the suffix
+  // Extract number and possible existing suffix (e.g., /day, /a, /m)
   const hasDay = salary.toLowerCase().includes("/day");
   const hasAnnual = salary.toLowerCase().includes("/a");
+  const hasMonthly = salary.toLowerCase().includes("/m");
   
+  // If suffix already exists (except /m which converts to annual rate), just format and return
+  if (hasDay || hasAnnual) {
+    const parts = salary.split("/");
+    const cleanNumber = parts[0].replace(/[^0-9.]/g, "");
+    const formattedNumber = cleanNumber.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return `${formattedNumber}/${parts[1]}`;
+  }
+
+  if (hasMonthly) {
+    const parts = salary.split("/");
+    const cleanNumber = parts[0].replace(/[^0-9.]/g, "");
+    let num = parseFloat(cleanNumber) || 0;
+    num = num * 12;
+    const numStr = num.toFixed(2);
+    const numParts = numStr.split(".");
+    numParts[0] = numParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return `${numParts.join(".")}/a`;
+  }
+
   let cleanSalary = salary.replace(/[^0-9.]/g, "");
   if (!cleanSalary) return salary;
 
-  // Format with thousand separator
-  const parts = cleanSalary.split(".");
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const formattedSalary = parts.join(".");
-
+  let num = parseFloat(cleanSalary) || 0;
+  
   const statusLower = status.toLowerCase();
   
   // Explicitly check for status keywords to determine suffix
-  if (statusLower.includes("contractual") || statusLower.includes("temporary")) {
-    return `${formattedSalary}/day`;
-  } else if (statusLower.includes("permanent") || statusLower.includes("probationary")) {
+  if (statusLower.includes("contractual") || statusLower.includes("temporary") || statusLower.includes("job order")) {
+    const formatted = num.toString().split(".")[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (num.toString().includes(".") ? "." + num.toString().split(".")[1] : "");
+    return `${formatted}/day`;
+  } else {
+    // If number is < 100,000, treat as monthly salary and convert to annual salary rate (* 12)
+    if (num > 0 && num < 100000) {
+      num = num * 12;
+    }
+    const numStr = num.toFixed(2);
+    const parts = numStr.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formattedSalary = parts.join(".");
     return `${formattedSalary}/a`;
   }
-  
-  // If no status match, but salary originally had a suffix, preserve it
-  if (hasDay) return `${formattedSalary}/day`;
-  if (hasAnnual) return `${formattedSalary}/a`;
-
-  return formattedSalary;
 };
 
 export const sortServiceRecords = (records: import("../types/employee").ServiceRecord[]) => {

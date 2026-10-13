@@ -22,7 +22,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
       from: "",
       to: "",
       designation: "",
-      status: "Perm.",
+      status: "Permanent",
       salary: "",
       station: "",
       branch: "",
@@ -148,9 +148,9 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     <option value="">Select</option>
                     {[
                       "-do-",
-                      "Perm.",
-                      "Temp.",
-                      "Prob.",
+                      "Permanent",
+                      "Temporary",
+                      "Probationary",
                       "Casual",
                       "Contractual",
                       "Job Order",

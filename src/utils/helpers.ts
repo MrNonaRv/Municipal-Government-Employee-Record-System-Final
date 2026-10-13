@@ -170,9 +170,9 @@ export const formatSalary = (salary: string, status: string): string => {
   const statusLower = status.toLowerCase();
   
   // Explicitly check for status keywords to determine suffix
-  if (statusLower.includes("contractual") || statusLower.includes("temp.")) {
+  if (statusLower.includes("contractual") || statusLower.includes("temporary")) {
     return `${formattedSalary}/day`;
-  } else if (statusLower.includes("perm.") || statusLower.includes("prob.")) {
+  } else if (statusLower.includes("permanent") || statusLower.includes("probationary")) {
     return `${formattedSalary}/a`;
   }
   

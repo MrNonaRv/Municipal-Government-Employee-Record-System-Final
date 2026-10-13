@@ -370,7 +370,7 @@ const ProfileModal = ({
             <div className="h-10 w-px bg-white/10 hidden lg:block"></div>
 
             <div
-              className="flex bg-slate-900 p-1 rounded-2xl border border-white/5 overflow-x-auto whitespace-nowrap scrollbar-none max-w-full"
+              className="flex flex-wrap justify-center bg-slate-900 p-1 rounded-2xl border border-white/5 max-w-full"
               role="tablist"
               aria-label="Dossier sections"
             >

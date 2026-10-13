@@ -50,7 +50,7 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
     field: keyof ServiceRecord,
     value: string,
   ) => {
-    const upperFields: (keyof ServiceRecord)[] = ['designation', 'station', 'branch', 'sepCause'];
+    const upperFields: (keyof ServiceRecord)[] = ['designation', 'branch', 'sepCause'];
     const finalValue = upperFields.includes(field) ? value.toUpperCase() : value;
     onChange(records.map((r) => (r.id === id ? { ...r, [field]: finalValue } : r)));
   };
@@ -180,8 +180,35 @@ export default function ServiceRecordEditor({ records, onChange }: Props) {
                     onChange={(e) =>
                       updateRecord(rec.id, "station", e.target.value)
                     }
+                    list="station-options"
                     className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs transition-all outline-none uppercase focus:ring-1 focus:ring-[var(--gold)] focus:border-transparent"
                   />
+                  <datalist id="station-options">
+                    {[
+                      "General Services / Admin",
+                      "Human Resource Management Office",
+                      "LGU Mambusao",
+                      "MDRRM",
+                      "MEEDO",
+                      "Mayor's Office",
+                      "Municipal Accounting Office",
+                      "Municipal Agriculture Office",
+                      "Municipal Assessor's Office",
+                      "Municipal Budget Office",
+                      "Municipal Civil Registrar's Office",
+                      "Municipal Disaster Risk Reduction & Mgmt Office",
+                      "Municipal Engineering Office",
+                      "Municipal Health Office",
+                      "Municipal Planning and Development Office",
+                      "Municipal Social Welfare and Development Office",
+                      "Municipal Treasurer's Office",
+                      "SB",
+                      "Sangguniang Bayan Office",
+                      "Treasurer",
+                    ].map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
                 </td>
                 <td className="px-1 py-1">
                   <input

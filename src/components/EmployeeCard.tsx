@@ -192,7 +192,7 @@ const EmployeeCard = memo(function EmployeeCard({
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                 Station
               </span>
-              <span className="text-xs font-bold truncate">
+              <span className="text-xs font-bold break-words leading-tight">
                 {latestSR?.station || "No Station"}
               </span>
             </div>
